@@ -1,7 +1,7 @@
 package edu.mit.media.mysnapshot.activities.questions.fragment;
 
 
-import android.support.v7.widget.AppCompatCheckBox;
+import androidx.appcompat.widget.AppCompatCheckBox;
 import android.view.ViewGroup;
 import android.widget.CompoundButton;
 import android.widget.TextView;

@@ -52,4 +52,33 @@
         <attr name="rightTint" format="reference|color" />
     </declare-styleable>
 
+    <!-- Vendored from com.flyco.pageindicator (FlycoPageIndicator_Lib, MIT license,
+         https://github.com/H07000223/FlycoPageIndicator) since the original jcenter-hosted
+         artifact and its jitpack build are both dead; see CONTRIBUTING.md. -->
+    <declare-styleable name="RoundCornerIndicaor">
+        <attr name="rci_width" format="dimension"/>
+        <attr name="rci_height" format="dimension"/>
+        <attr name="rci_gap" format="dimension"/>
+        <attr name="rci_cornerRadius" format="dimension"/>
+        <attr name="rci_strokeWidth" format="dimension"/>
+        <attr name="rci_selectColor" format="color"/>
+        <attr name="rci_unselectColor" format="color"/>
+        <attr name="rci_strokeColor" format="color"/>
+        <attr name="rci_isSnap" format="boolean"/>
+    </declare-styleable>
+
+    <declare-styleable name="FlycoPageIndicaor">
+        <attr name="fpi_width" format="dimension"/>
+        <attr name="fpi_height" format="dimension"/>
+        <attr name="fpi_gap" format="dimension"/>
+        <attr name="fpi_strokeWidth" format="dimension"/>
+        <attr name="fpi_strokeColor" format="color"/>
+        <attr name="fpi_isSnap" format="boolean"/>
+        <attr name="fpi_selectColor" format="color"/>
+        <attr name="fpi_unselectColor" format="color"/>
+        <attr name="fpi_cornerRadius" format="dimension"/>
+        <attr name="fpi_selectRes" format="reference"/>
+        <attr name="fpi_unselectRes" format="reference"/>
+    </declare-styleable>
+
 </resources>

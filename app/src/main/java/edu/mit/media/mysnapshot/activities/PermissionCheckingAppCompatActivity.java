@@ -3,8 +3,8 @@ package edu.mit.media.mysnapshot.activities;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.appcompat.app.AppCompatActivity;
 
 
 public class PermissionCheckingAppCompatActivity extends AppCompatActivity {
@@ -26,13 +26,13 @@ public class PermissionCheckingAppCompatActivity extends AppCompatActivity {
         if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
 
             // Should we show an explanation?
-            if (android.support.v4.app.ActivityCompat.shouldShowRequestPermissionRationale(this,
+            if (androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.ACCESS_FINE_LOCATION)) {
 
                 // Show an expanation to the user *asynchronously* -- don't block
                 // this thread waiting for the user's response! After the user
                 // sees the explanation, try again to request the permission.
-                android.support.v4.app.ActivityCompat.requestPermissions(this,
+                androidx.core.app.ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                         MY_PERMISSIONS_REQUEST_LOCATION);
 
@@ -40,7 +40,7 @@ public class PermissionCheckingAppCompatActivity extends AppCompatActivity {
 
                 // No explanation needed, we can request the permission.
 
-                android.support.v4.app.ActivityCompat.requestPermissions(this,
+                androidx.core.app.ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                         MY_PERMISSIONS_REQUEST_LOCATION);
 
@@ -64,13 +64,13 @@ public class PermissionCheckingAppCompatActivity extends AppCompatActivity {
         if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
 
             // Should we show an explanation?
-            if (android.support.v4.app.ActivityCompat.shouldShowRequestPermissionRationale(this,
+            if (androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.CAMERA)) {
 
                 // Show an expanation to the user *asynchronously* -- don't block
                 // this thread waiting for the user's response! After the user
                 // sees the explanation, try again to request the permission.
-                android.support.v4.app.ActivityCompat.requestPermissions(this,
+                androidx.core.app.ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.CAMERA},
                         MY_PERMISSIONS_REQUEST_CAMERA);
 
@@ -78,7 +78,7 @@ public class PermissionCheckingAppCompatActivity extends AppCompatActivity {
 
                 // No explanation needed, we can request the permission.
 
-                android.support.v4.app.ActivityCompat.requestPermissions(this,
+                androidx.core.app.ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.CAMERA},
                         MY_PERMISSIONS_REQUEST_CAMERA);
 
@@ -103,13 +103,13 @@ public class PermissionCheckingAppCompatActivity extends AppCompatActivity {
         if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
 
             // Should we show an explanation?
-            if (android.support.v4.app.ActivityCompat.shouldShowRequestPermissionRationale(this,
+            if (androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
 
                 // Show an expanation to the user *asynchronously* -- don't block
                 // this thread waiting for the user's response! After the user
                 // sees the explanation, try again to request the permission.
-                android.support.v4.app.ActivityCompat.requestPermissions(this,
+                androidx.core.app.ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                         MY_PERMISSIONS_REQUEST_READ_FILES);
 
@@ -117,7 +117,7 @@ public class PermissionCheckingAppCompatActivity extends AppCompatActivity {
 
                 // No explanation needed, we can request the permission.
 
-                android.support.v4.app.ActivityCompat.requestPermissions(this,
+                androidx.core.app.ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                         MY_PERMISSIONS_REQUEST_READ_FILES);
 

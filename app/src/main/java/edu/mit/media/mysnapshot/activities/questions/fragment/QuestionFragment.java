@@ -11,7 +11,7 @@ import edu.mit.media.mysnapshot.R;
 import edu.mit.media.mysnapshot.activities.questions.QuestionActivity;
 import edu.mit.media.mysnapshot.activities.questions.QuestionListener;
 
-public abstract class QuestionFragment<T> extends android.support.v4.app.Fragment {
+public abstract class QuestionFragment<T> extends androidx.fragment.app.Fragment {
 
 
     public QuestionListener listener;

@@ -9,7 +9,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Parcelable;
-import android.support.v4.view.ViewPager;
+import androidx.viewpager.widget.ViewPager;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
@@ -74,19 +74,19 @@ public class ScrollPageIndicator extends LinearLayout implements PageIndicator {
         addView(rl_parent);
 
         setGravity(Gravity.CENTER);
-        TypedArray ta = context.obtainStyledAttributes(attrs, com.flyco.pageindicator.R.styleable.FlycoPageIndicaor);
-        indicatorWidth = ta.getDimensionPixelSize(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_width, dp2px(6));
-        indicatorHeight = ta.getDimensionPixelSize(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_height, dp2px(6));
-        indicatorGap = ta.getDimensionPixelSize(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_gap, dp2px(8));
-        cornerRadius = ta.getDimensionPixelSize(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_cornerRadius, dp2px(3));
-        strokeWidth = ta.getDimensionPixelSize(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_strokeWidth, dp2px(0));
-        strokeColor = ta.getColor(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_strokeColor, Color.parseColor("#ffffff"));
-        isSnap = ta.getBoolean(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_isSnap, false);
+        TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.FlycoPageIndicaor);
+        indicatorWidth = ta.getDimensionPixelSize(R.styleable.FlycoPageIndicaor_fpi_width, dp2px(6));
+        indicatorHeight = ta.getDimensionPixelSize(R.styleable.FlycoPageIndicaor_fpi_height, dp2px(6));
+        indicatorGap = ta.getDimensionPixelSize(R.styleable.FlycoPageIndicaor_fpi_gap, dp2px(8));
+        cornerRadius = ta.getDimensionPixelSize(R.styleable.FlycoPageIndicaor_fpi_cornerRadius, dp2px(3));
+        strokeWidth = ta.getDimensionPixelSize(R.styleable.FlycoPageIndicaor_fpi_strokeWidth, dp2px(0));
+        strokeColor = ta.getColor(R.styleable.FlycoPageIndicaor_fpi_strokeColor, Color.parseColor("#ffffff"));
+        isSnap = ta.getBoolean(R.styleable.FlycoPageIndicaor_fpi_isSnap, false);
 
-        selectColor = ta.getColor(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_selectColor, Color.parseColor("#ffffff"));
-        unselectColor = ta.getColor(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_unselectColor, Color.parseColor("#88ffffff"));
-        int selectRes = ta.getResourceId(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_selectRes, 0);
-        int unselectRes = ta.getResourceId(com.flyco.pageindicator.R.styleable.FlycoPageIndicaor_fpi_unselectRes, 0);
+        selectColor = ta.getColor(R.styleable.FlycoPageIndicaor_fpi_selectColor, Color.parseColor("#ffffff"));
+        unselectColor = ta.getColor(R.styleable.FlycoPageIndicaor_fpi_unselectColor, Color.parseColor("#88ffffff"));
+        int selectRes = ta.getResourceId(R.styleable.FlycoPageIndicaor_fpi_selectRes, 0);
+        int unselectRes = ta.getResourceId(R.styleable.FlycoPageIndicaor_fpi_unselectRes, 0);
         ta.recycle();
 
         ta = context.obtainStyledAttributes(attrs, R.styleable.ScrollPageIndicator);

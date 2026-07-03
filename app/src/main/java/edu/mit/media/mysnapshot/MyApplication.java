@@ -5,9 +5,9 @@ import android.app.Application;
 import android.content.Context;
 
 import org.acra.ACRA;
-import org.acra.config.ACRAConfiguration;
-import org.acra.config.ACRAConfigurationException;
-import org.acra.config.ConfigurationBuilder;
+import org.acra.config.CoreConfigurationBuilder;
+import org.acra.config.HttpSenderConfigurationBuilder;
+import org.acra.data.StringFormat;
 import org.acra.sender.HttpSender;
 
 import java.net.MalformedURLException;
@@ -41,22 +41,20 @@ public class MyApplication extends Application {
         } catch (MalformedURLException e) {
         }
 
-        try {
+        CoreConfigurationBuilder builder = new CoreConfigurationBuilder()
+                .withReportFormat(StringFormat.JSON)
+                .withPluginConfigurations(
+                        new HttpSenderConfigurationBuilder()
+                                .withEnabled(true)
+                                .withUri(baseURL + "acra/report/")
+                                .withHttpMethod(HttpSender.Method.POST)
+                                .withBasicAuthLogin(acraUser)
+                                .withBasicAuthPassword(acraPassword)
+                                .withHttpHeaders(headers)
+                                .build()
+                );
 
-            final ACRAConfiguration config = new ConfigurationBuilder(this)
-                    .setFormUri(baseURL + "acra/report/")
-                    .setReportType(HttpSender.Type.JSON)
-                    .setFormUriBasicAuthLogin(acraUser)
-                    .setFormUriBasicAuthPassword(acraPassword)
-                    .setHttpHeaders(headers)
-                    .build();
-
-            // The following line triggers the initialization of ACRA
-            ACRA.init(this, config);
-
-        } catch (ACRAConfigurationException e) {
-            e.printStackTrace();
-        }
-
+        // The following line triggers the initialization of ACRA
+        ACRA.init(this, builder);
     }
 }

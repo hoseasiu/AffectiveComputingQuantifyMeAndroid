@@ -3,12 +3,14 @@ package edu.mit.media.mysnapshot.notifications;
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.support.v7.app.NotificationCompat;
+import android.os.Build;
+import androidx.core.app.NotificationCompat;
 import android.util.Log;
 
 import org.joda.time.DateTime;
@@ -28,6 +30,8 @@ public class AlarmReceiver extends BroadcastReceiver {
 
     public static final String CREATE_NOTIFICATION_ACTION = "edu.mit.media.mysnapshot.makenotificationsplz";
 
+    public static final String CHECKIN_REMINDER_CHANNEL_ID = "checkin_reminders";
+
     @Override
     public void onReceive(Context context, Intent intent) {
 
@@ -44,8 +48,10 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         Log.d(LOGTAG, "Creating notification");
 
-        android.support.v4.app.NotificationCompat.Builder mBuilder =
-                new NotificationCompat.Builder(context)
+        createNotificationChannel(context);
+
+        androidx.core.app.NotificationCompat.Builder mBuilder =
+                new NotificationCompat.Builder(context, CHECKIN_REMINDER_CHANNEL_ID)
                         .setSmallIcon(R.drawable.art_icon)
                         .setPriority(NotificationCompat.PRIORITY_MAX)
                         .setContentTitle(context.getResources().getString(R.string.notification_title))
@@ -59,7 +65,7 @@ public class AlarmReceiver extends BroadcastReceiver {
                         context,
                         500000,
                         resultIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
                 );
 
         mBuilder.setContentIntent(resultPendingIntent);
@@ -70,6 +76,16 @@ public class AlarmReceiver extends BroadcastReceiver {
         mNotifyMgr.notify(NOTIFICATION_ID, notification);
     }
 
+    private static void createNotificationChannel(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHECKIN_REMINDER_CHANNEL_ID,
+                    context.getResources().getString(R.string.notification_title),
+                    NotificationManager.IMPORTANCE_HIGH);
+            NotificationManager mNotifyMgr = (NotificationManager) context.getSystemService(Activity.NOTIFICATION_SERVICE);
+            mNotifyMgr.createNotificationChannel(channel);
+        }
+    }
 
     public static void setRecurringAlarm(Context context) {
 
@@ -78,7 +94,7 @@ public class AlarmReceiver extends BroadcastReceiver {
         Intent intent = new Intent(context, AlarmReceiver.class);
         intent.setAction(CREATE_NOTIFICATION_ACTION);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context,
-                64346357, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+                64346357, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         AlarmManager alarms = (AlarmManager) context.getSystemService(
                 Context.ALARM_SERVICE);
 
