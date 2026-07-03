@@ -21,5 +21,8 @@ data class CheckinOutcome(
     val day: Int = 0,
     val isComplete: Boolean = false,
     val resultValue: Float = 0f,
-    val resultConfidence: Float = 0f
+    val resultConfidence: Float = 0f,
+    // Each day's input value so far in the current stage (nulls for missed days),
+    // mirroring the old `CheckinResponse.CheckinResult.stageInputs`.
+    val stageInputs: List<Float?> = emptyList()
 )

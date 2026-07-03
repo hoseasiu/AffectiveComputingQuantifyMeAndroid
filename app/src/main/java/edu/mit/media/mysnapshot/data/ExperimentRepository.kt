@@ -59,6 +59,10 @@ class ExperimentRepository @Inject constructor(
 
     fun getCurrentExperiment(): Flow<ExperimentEntity?> = experimentDao.getCurrentExperiment()
 
+    fun getLatestExperiment(): Flow<ExperimentEntity?> = experimentDao.getLatestExperiment()
+
+    fun getExperimentById(experimentId: Int): Flow<ExperimentEntity?> = experimentDao.getById(experimentId)
+
     fun getAllExperiments(): Flow<List<ExperimentEntity>> = experimentDao.getAllExperiments()
 
     fun getCheckinsForExperiment(experimentId: Int): Flow<List<CheckinEntity>> =
@@ -104,7 +108,8 @@ class ExperimentRepository @Inject constructor(
         return CheckinOutcome(
             currentStage = experiment.currentStage,
             target = dailyTarget,
-            day = dayInStage
+            day = dayInStage,
+            stageInputs = stageInputs
         )
     }
 
@@ -224,7 +229,8 @@ class ExperimentRepository @Inject constructor(
             day = dayInStage,
             isComplete = isComplete,
             resultValue = resultValue,
-            resultConfidence = resultConfidence
+            resultConfidence = resultConfidence,
+            stageInputs = newStageInputs
         )
     }
 
