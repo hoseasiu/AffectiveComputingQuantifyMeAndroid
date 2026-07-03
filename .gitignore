@@ -77,3 +77,10 @@ lint/reports/
 
 # Project-specific: real backend URL / crash-reporting creds, never checked in
 base_url.xml
+
+# Agent files
+CLAUDE.md
+AGENT_PLANS/
+
+# root-level PDF files
+/*.pdf
