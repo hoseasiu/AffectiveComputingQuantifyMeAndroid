@@ -24,6 +24,13 @@ interface ExperimentDao {
     @Query("SELECT * FROM experiments WHERE is_active = 1 LIMIT 1")
     fun getCurrentExperiment(): Flow<ExperimentEntity?>
 
+    // The most recently started experiment, active or not. This is the on-device
+    // equivalent of the old `Experiment.CURRENT_EXPERIMENT_PREF` SharedPreferences pointer:
+    // it keeps pointing at a just-completed experiment (so the results screen can still be
+    // reached) until a newer experiment is started or this one is cancelled.
+    @Query("SELECT * FROM experiments ORDER BY start_time DESC LIMIT 1")
+    fun getLatestExperiment(): Flow<ExperimentEntity?>
+
     @Query("SELECT * FROM experiments ORDER BY start_time DESC")
     fun getAllExperiments(): Flow<List<ExperimentEntity>>
 
