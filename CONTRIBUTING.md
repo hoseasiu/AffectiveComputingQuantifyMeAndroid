@@ -34,6 +34,24 @@ happens, run `gradlew.bat` from PowerShell/cmd instead.
    on a fresh checkout) — that fallback produces an installable APK but **is not suitable
    for an actual store listing**. Set up a real `keystore.properties` before shipping.
 
+## Running CI checks locally
+
+`.github/workflows/android-ci.yml` (`testDebugUnitTest`, `assembleDebug`, `assembleRelease`)
+needs no backend or GitHub-specific infra — it's just Gradle against local config, so run the
+same commands directly instead of pushing to check:
+
+```powershell
+.\gradlew.bat testDebugUnitTest --console=plain
+.\gradlew.bat assembleDebug --console=plain
+.\gradlew.bat assembleRelease --console=plain
+```
+
+Prerequisites (see above): `local.properties` with `sdk.dir`, and
+`app/src/main/res/values/base_url.xml` present (a real one for local dev is fine — it just
+needs to compile, unlike CI's placeholder). `assembleRelease` falls back to your
+`~/.android/debug.keystore` if you have no `keystore.properties`, which Android Studio
+normally creates on first build/run.
+
 ## Phase 0 note: why there's no literal "build on the original 2016 toolchain" step
 
 Phase 0 of the modernization plan calls for getting the project building as-is (AGP 2.2.0,
