@@ -10,6 +10,7 @@ import edu.mit.media.mysnapshot.engine.CheckinRecord
 import edu.mit.media.mysnapshot.engine.ExperimentDataProvider
 import edu.mit.media.mysnapshot.engine.ExperimentEngine
 import edu.mit.media.mysnapshot.engine.ExperimentType
+import edu.mit.media.mysnapshot.health.HealthConnectManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -29,7 +30,8 @@ import javax.inject.Singleton
 @Singleton
 class ExperimentRepository @Inject constructor(
     @ApplicationContext private val context: android.content.Context,
-    private val database: QuantifyMeDatabase
+    private val database: QuantifyMeDatabase,
+    private val healthConnect: HealthConnectManager
 ) {
     private val experimentDao = database.experimentDao()
     private val checkinDao = database.checkinDao()
@@ -98,7 +100,7 @@ class ExperimentRepository @Inject constructor(
         val today = LocalDate.now()
 
         val (start, end) = stageDateRange(state, experiment.currentStage, today, experiment.endTime, clipToToday = true)
-        val stageInputs = if (start != null) ExperimentDataProvider.getInputs(type, checkins, start, end!!) else emptyList()
+        val stageInputs = if (start != null) ExperimentDataProvider.getInputs(type, checkins, start, end!!, healthConnect) else emptyList()
         val dayInStage = stageInputs.size - 1
         val stageTarget = state.stageTargetValues.getOrNull(experiment.currentStage)
         val dailyTarget = ExperimentEngine.getDailyTarget(
@@ -146,8 +148,8 @@ class ExperimentRepository @Inject constructor(
         // should_end_stage(): evaluate the *current* (pre-advance) stage.
         val (curStart, curEndClipped) = stageDateRange(state, experiment.currentStage, today, experiment.endTime, clipToToday = true)
         val stageDay = if (curStart != null) Days.daysBetween(curStart, today).days else 0
-        val curInputs = if (curStart != null) ExperimentDataProvider.getInputs(type, checkins, curStart, curEndClipped!!) else emptyList()
-        val curOutputs = if (curStart != null) ExperimentDataProvider.getOutputs(type, checkins, curStart, curEndClipped!!) else emptyList()
+        val curInputs = if (curStart != null) ExperimentDataProvider.getInputs(type, checkins, curStart, curEndClipped!!, healthConnect) else emptyList()
+        val curOutputs = if (curStart != null) ExperimentDataProvider.getOutputs(type, checkins, curStart, curEndClipped!!, healthConnect) else emptyList()
         val missedDays = ExperimentEngine.getNumMissedDays(curInputs, curOutputs)
         val curStageTarget = state.stageTargetValues.getOrNull(experiment.currentStage)
         val validDays = ExperimentEngine.getValidDays(curInputs, curOutputs, curStageTarget, type.rangeSize)
@@ -167,7 +169,7 @@ class ExperimentRepository @Inject constructor(
             if (currentStageNum == 0) {
                 // end_stage(): stage 0 -> compute baseline average/targets with always_get_median (no variability).
                 val (baseStart, baseEnd) = stageDateRange(state, 0, today, experiment.endTime, clipToToday = true)
-                val baselineInputs = ExperimentDataProvider.getInputs(type, checkins, baseStart!!, baseEnd!!)
+                val baselineInputs = ExperimentDataProvider.getInputs(type, checkins, baseStart!!, baseEnd!!, healthConnect)
                 val stageTargets = ExperimentEngine.setStageTargets(baselineInputs, useVariability = false, type.ranges, type.rangeSize)
                 state = state.withStageTargetValues(stageTargets.stageTargetValues)
                 initialStageAverage = stageTargets.initialStageAverage
@@ -180,7 +182,7 @@ class ExperimentRepository @Inject constructor(
 
         // Recompute stage_inputs/target for the (possibly just-advanced) current stage.
         val (newStart, newEndRaw) = stageDateRange(state, currentStageNum, today, experiment.endTime ?: if (currentStageNum > ExperimentEngine.NUM_STAGES) DateTime.now() else null, clipToToday = true)
-        val newStageInputs = if (newStart != null) ExperimentDataProvider.getInputs(type, checkins, newStart, newEndRaw!!) else emptyList()
+        val newStageInputs = if (newStart != null) ExperimentDataProvider.getInputs(type, checkins, newStart, newEndRaw!!, healthConnect) else emptyList()
         val dayInStage = newStageInputs.size - 1
         val newStageTarget = state.stageTargetValues.getOrNull(currentStageNum)
         val dailyTarget = ExperimentEngine.getDailyTarget(type.useVariability, newStageTarget, initialStageAverage ?: 0f, dayInStage)
@@ -194,8 +196,8 @@ class ExperimentRepository @Inject constructor(
             endTime = DateTime.now()
             val validDaysByStage = (1..ExperimentEngine.NUM_STAGES).associateWith { stage ->
                 val (s, e) = stageDateRange(state, stage, today, endTime, clipToToday = true)
-                val ins = ExperimentDataProvider.getInputs(type, checkins, s!!, e!!)
-                val outs = ExperimentDataProvider.getOutputs(type, checkins, s, e)
+                val ins = ExperimentDataProvider.getInputs(type, checkins, s!!, e!!, healthConnect)
+                val outs = ExperimentDataProvider.getOutputs(type, checkins, s, e, healthConnect)
                 ExperimentEngine.getValidDays(ins, outs, state.stageTargetValues[stage], type.rangeSize)
             }
             val targetsMap = (1..ExperimentEngine.NUM_STAGES).associateWith { state.stageTargetValues[it]!! }

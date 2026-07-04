@@ -90,7 +90,7 @@ class ExperimentCheckinActivity : QuestionActivity() {
         textFragment.init(
             "We're going to ask you a couple quick questions about your day, then we'll let you know what you should do for your experiment.\n\nYou only need to check in once a day!",
             android.view.View.OnClickListener {
-                val launchIntent = packageManager.getLaunchIntentForPackage("com.jawbone.up")
+                val launchIntent = packageManager.getLaunchIntentForPackage("com.google.android.apps.healthdata")
                 if (launchIntent != null) {
                     startActivity(launchIntent)
                 }

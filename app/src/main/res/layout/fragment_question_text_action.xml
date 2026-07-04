@@ -44,7 +44,7 @@
             android:layout_height="wrap_content">
 
             <ImageView
-                android:src="@drawable/upimage"
+                android:src="@drawable/icon_settings_activity"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
                 android:layout_marginLeft="20dp"
@@ -55,7 +55,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:lineSpacingMultiplier="1.15"
-                android:text="Please make sure your Jawbone information is up to date and correct!"
+                android:text="Please make sure your wearable has synced to Health Connect!"
                 android:layout_marginRight="14dp"
                 android:gravity="center_vertical|left"
                 android:textSize="16sp" />
