@@ -1,27 +1,54 @@
 package edu.mit.media.mysnapshot.activities
 
-import android.app.AlertDialog
-import android.content.Context
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import android.view.KeyEvent
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
-import android.widget.AbsListView
-import android.widget.ArrayAdapter
-import android.widget.ImageView
-import android.widget.ListView
-import android.widget.TextView
 import dagger.hilt.android.AndroidEntryPoint
-import edu.mit.media.mysnapshot.R
 import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.ExperimentType
-import kotlinx.coroutines.flow.first
+import edu.mit.media.mysnapshot.ui.theme.DayCountGrey
+import edu.mit.media.mysnapshot.ui.theme.FadeBlue
+import edu.mit.media.mysnapshot.ui.theme.FadeRed
+import edu.mit.media.mysnapshot.ui.theme.PageIndicatorDisabled
+import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
 import kotlinx.coroutines.launch
 import org.joda.time.DateTime
 import org.joda.time.Days
@@ -29,166 +56,217 @@ import org.joda.time.LocalDate
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class HistoryActivity : AppCompatActivity() {
+class HistoryActivity : ComponentActivity() {
 
     @Inject
     lateinit var repository: ExperimentRepository
 
-    private lateinit var swiper: SwipeRefreshLayout
-    private lateinit var list: ListView
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_history)
+        setContent {
+            QuantifyMeTheme {
+                val experiments by repository.getAllExperiments().collectAsStateWithLifecycle(initialValue = null)
+                var isCancelling by remember { mutableStateOf(false) }
 
-        list = findViewById(R.id.list)
-        list.adapter = ExperimentAdapter(this)
-        list.emptyView = findViewById(R.id.empty)
-
-        swiper = findViewById(R.id.swiper)
-        swiper.setOnRefreshListener { loadHistory() }
-
-        list.setOnScrollListener(object : AbsListView.OnScrollListener {
-            override fun onScrollStateChanged(view: AbsListView, scrollState: Int) {}
-
-            override fun onScroll(listView: AbsListView, firstVisibleItem: Int, visibleItemCount: Int, totalItemCount: Int) {
-                val topRowVerticalPosition = if (listView.childCount == 0) 0 else listView.getChildAt(0).top
-                swiper.isEnabled = topRowVerticalPosition >= 0
+                HistoryScreen(
+                    experiments = experiments,
+                    isBusy = isCancelling,
+                    onCancelConfirmed = { experiment ->
+                        isCancelling = true
+                        lifecycleScope.launch {
+                            repository.cancelExperiment(experiment.id)
+                            isCancelling = false
+                        }
+                    }
+                )
             }
-        })
-
-        loadHistory()
-    }
-
-    private fun loadHistory() {
-        setRefreshing(true)
-        lifecycleScope.launch {
-            val experiments = repository.getAllExperiments().first()
-            (list.adapter as ExperimentAdapter).setItems(experiments)
-            setRefreshing(false)
-        }
-    }
-
-    private inner class ExperimentAdapter(context: Context) :
-        ArrayAdapter<ExperimentEntity>(context, R.layout.view_history_experiment) {
-
-        fun setItems(items: List<ExperimentEntity>) {
-            clear()
-            addAll(items)
-        }
-
-        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val experiment = getItem(position)!!
-            val experimentType = ExperimentType.fromTypeKey(experiment.type)
-
-            val root = convertView ?: LayoutInflater.from(context).inflate(R.layout.view_history_experiment, parent, false)
-
-            val background = root.findViewById<View>(R.id.background)
-
-            val icon = root.findViewById<ImageView>(R.id.icon)
-            icon.setImageResource(experimentType.iconId)
-
-            val title = root.findViewById<TextView>(R.id.title)
-            title.text = experimentType.name
-
-            val days = Days.daysBetween(
-                LocalDate(experiment.startTime),
-                LocalDate(experiment.endTime ?: DateTime.now())
-            ).days
-
-            val dayCount = root.findViewById<TextView>(R.id.day_count)
-            dayCount.text = "$days Days" +
-                (if (experiment.isCancelled) " (Canceled)" else "") +
-                (if (experiment.isActive) " (Active)" else "")
-
-            val result = root.findViewById<TextView>(R.id.result)
-            result.text = experiment.resultValue?.let { experimentType.formatInstruction(it) } ?: ""
-
-            val confidence = root.findViewById<TextView>(R.id.confidence)
-            confidence.text = Math.round((experiment.resultConfidence ?: 0f) * 100f).toString() + "%"
-
-            val content = root.findViewById<ViewGroup>(R.id.content)
-            for (i in 0 until content.childCount) {
-                content.getChildAt(i).visibility = View.GONE
-            }
-
-            val cancelButton = root.findViewById<View>(R.id.cancel_button)
-            when {
-                experiment.isCancelled -> {
-                    background.setBackgroundColor(resources.getColor(R.color.pageindicator_disabled))
-                    root.findViewById<View>(R.id.canceled).visibility = View.VISIBLE
-                    cancelButton.setOnClickListener(null)
-                }
-                experiment.isActive -> {
-                    background.setBackgroundColor(resources.getColor(R.color.fadered))
-                    root.findViewById<View>(R.id.in_progress).visibility = View.VISIBLE
-                    cancelButton.setOnClickListener { cancelExperiment(experiment) }
-                }
-                else -> {
-                    background.setBackgroundColor(resources.getColor(R.color.white))
-                    root.findViewById<View>(R.id.finished).visibility = View.VISIBLE
-                    cancelButton.setOnClickListener(null)
-                }
-            }
-
-            return root
-        }
-    }
-
-    private fun setRefreshing(refreshing: Boolean) {
-        swiper.post { swiper.isRefreshing = refreshing }
-    }
-
-    private var dialog: AlertDialog? = null
-
-    private fun cancelExperiment(experiment: ExperimentEntity) {
-        val editText = android.widget.EditText(this)
-        editText.setSingleLine()
-        editText.hint = "Reason to Quit"
-        editText.imeOptions = EditorInfo.IME_ACTION_GO
-
-        editText.setOnEditorActionListener(TextView.OnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_GO && editText.text.toString().isNotEmpty()) {
-                cancelConfirmed(experiment)
-                dialog?.hide()
-                true
-            } else {
-                false
-            }
-        })
-
-        dialog = AlertDialog.Builder(this)
-            .setIcon(android.R.drawable.ic_dialog_alert)
-            .setTitle("Really Stop Experiment?")
-            .setView(editText)
-            .setMessage("All your progress will be lost forever! If you want to quit, please let us know why.")
-            .setPositiveButton("Continue") { _, _ ->
-                if (editText.text.toString().isNotEmpty()) {
-                    cancelConfirmed(experiment)
-                } else {
-                    android.widget.Toast.makeText(this, "Please enter a reason", android.widget.Toast.LENGTH_LONG).show()
-                }
-            }
-            .setNegativeButton("Cancel!", null)
-            .show()
-    }
-
-    private fun cancelConfirmed(experiment: ExperimentEntity) {
-        val progressDialog = AlertDialog.Builder(this)
-            .setIcon(android.R.drawable.ic_menu_delete)
-            .setCancelable(false)
-            .setTitle("Stopping Experiment")
-            .show()
-
-        lifecycleScope.launch {
-            repository.cancelExperiment(experiment.id)
-            progressDialog.dismiss()
-            loadHistory()
         }
     }
 
     companion object {
         const val LOGTAG = "HistoryActivity"
     }
+}
+
+@Composable
+private fun HistoryScreen(
+    experiments: List<ExperimentEntity>?,
+    isBusy: Boolean,
+    onCancelConfirmed: (ExperimentEntity) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(FadeBlue)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 20.dp, bottom = 20.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "My Experiments",
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        when {
+            experiments == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            experiments.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "No Experiments Found!",
+                    modifier = Modifier.padding(30.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+            else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(experiments, key = { it.id }) { experiment ->
+                    ExperimentCard(experiment, isBusy, onCancelConfirmed)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExperimentCard(
+    experiment: ExperimentEntity,
+    isBusy: Boolean,
+    onCancelConfirmed: (ExperimentEntity) -> Unit
+) {
+    val experimentType = remember(experiment.type) { ExperimentType.fromTypeKey(experiment.type) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+
+    val backgroundColor = when {
+        experiment.isCancelled -> PageIndicatorDisabled
+        experiment.isActive -> FadeRed
+        else -> Color.White
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(10.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row {
+                Image(
+                    painter = painterResource(experimentType.iconId),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(70.dp)
+                        .padding(end = 20.dp)
+                )
+                Column {
+                    Text(text = experimentType.name, fontSize = 18.sp)
+
+                    val days = Days.daysBetween(
+                        LocalDate(experiment.startTime),
+                        LocalDate(experiment.endTime ?: DateTime.now())
+                    ).days
+                    val dayCountText = "$days Days" +
+                        (if (experiment.isCancelled) " (Canceled)" else "") +
+                        (if (experiment.isActive) " (Active)" else "")
+                    Text(
+                        text = dayCountText,
+                        fontSize = 16.sp,
+                        color = DayCountGrey,
+                        modifier = Modifier.padding(top = 7.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            when {
+                experiment.isCancelled -> Text(
+                    text = "Canceled",
+                    fontSize = 22.sp,
+                    fontStyle = FontStyle.Italic
+                )
+                experiment.isActive -> Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(onClick = { showCancelDialog = true }, enabled = !isBusy) {
+                        Text("Quit")
+                    }
+                }
+                else -> Column {
+                    Row {
+                        Text(text = "Your Result: ", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = experiment.resultValue?.let { experimentType.formatInstruction(it) } ?: "",
+                            fontSize = 18.sp
+                        )
+                    }
+                    Row(modifier = Modifier.padding(top = 10.dp)) {
+                        Text(text = "Confidence: ", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = Math.round((experiment.resultConfidence ?: 0f) * 100f).toString() + "%",
+                            fontSize = 18.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showCancelDialog) {
+        CancelExperimentDialog(
+            onDismiss = { showCancelDialog = false },
+            onConfirm = { showCancelDialog = false; onCancelConfirmed(experiment) }
+        )
+    }
+}
+
+@Composable
+private fun CancelExperimentDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    var reason by remember { mutableStateOf("") }
+    var showReasonError by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Really Stop Experiment?") },
+        text = {
+            Column {
+                Text("All your progress will be lost forever! If you want to quit, please let us know why.")
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = { reason = it; showReasonError = false },
+                    label = { Text("Reason to Quit") },
+                    singleLine = true,
+                    isError = showReasonError
+                )
+                if (showReasonError) {
+                    Text(
+                        text = "Please enter a reason",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                if (reason.isNotEmpty()) onConfirm() else showReasonError = true
+            }) {
+                Text("Continue")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancel!")
+            }
+        }
+    )
 }
