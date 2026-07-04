@@ -166,3 +166,19 @@ walked `MainActivity` → `IntroActivity` (runtime `GET_ACCOUNTS` permission pro
 any step. The login/experiment-sync network flows themselves were **not** exercised
 end-to-end — that requires a live backend and is moot anyway once Phase 2 removes the
 backend dependency entirely.
+
+## Phase 3 — Jawbone → Health Connect
+
+`minSdkVersion` was raised from 21 to 26 as part of this phase: `androidx.health.connect:
+connect-client` requires API 26+, and its own manifest's `minSdkVersion` would otherwise
+conflict with this app's during manifest merging. This also means `java.time.Instant`/
+`ZoneId` (used in `HealthConnectManager`) are natively available on all supported devices —
+no core-library-desugaring dependency was needed.
+
+**Known verification gap**: the four `HealthConnectManager` extraction functions (daily
+steps, sleep duration, sleep efficiency, sleep start time) were verified by unit tests
+against the engine (`ExperimentEngineTest`, still 26/26) and a clean `assembleDebug`, but
+**not** exercised against a real Health Connect provider — this dev environment has no
+Android device/emulator with Health Connect installed and a wearable synced to it. Before
+relying on a live experiment run, sanity-check `HealthConnectManager`'s per-day aggregation
+against actual `StepsRecord`/`SleepSessionRecord` data on a real device.

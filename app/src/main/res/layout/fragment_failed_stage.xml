@@ -62,7 +62,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="18sp"
-            android:text="Please be sure to use your Jawbone and checkin here app every day, and to hit the target goals."
+            android:text="Please be sure to wear your tracker and checkin here every day, and to hit the target goals."
             android:gravity="center"
             android:lineSpacingMultiplier="1.15"
             android:layout_marginLeft="20dp"

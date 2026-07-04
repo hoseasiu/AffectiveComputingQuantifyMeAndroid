@@ -89,7 +89,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 
     public static void setRecurringAlarm(Context context) {
 
-        SettingsActivity.UserData userData = SettingsActivity.loadUserData(context).userData;
+        SettingsActivity.UserData userData = SettingsActivity.loadUserData(context).getUserData();
 
         Intent intent = new Intent(context, AlarmReceiver.class);
         intent.setAction(CREATE_NOTIFICATION_ACTION);
