@@ -8,8 +8,9 @@
     <uses-permission android:name="android.permission.READ_PROFILE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <uses-permission android:name="com.android.alarm.permission.SET_ALARM"/>
+    <!-- Required since API 33 to actually display the WorkManager-driven daily check-in
+         reminder notification; requested at runtime from SettingsActivity/MainActivity. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Health Connect (Phase 3 replacement for the dead Jawbone UP SDK) -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
@@ -135,17 +136,20 @@
             android:exported="false"
             tools:node="merge" />
 
-        <receiver
-            android:name="edu.mit.media.mysnapshot.notifications.AlarmReceiver"
-            android:exported="true"
-            android:priority="1000" >
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="edu.mit.media.mysnapshot.makenotificationsplz" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </receiver>
+        <!-- WorkManager's default on-demand initializer would build a plain (non-Hilt)
+             WorkManager instance before MyApplication.onCreate runs; remove it so
+             MyApplication's Configuration.Provider (HiltWorkerFactory-backed) is used
+             instead, letting CheckinReminderWorker use @HiltWorker/@AssistedInject. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
     </application>
 

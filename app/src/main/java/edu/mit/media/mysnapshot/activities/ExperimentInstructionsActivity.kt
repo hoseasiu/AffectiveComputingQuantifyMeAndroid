@@ -1,216 +1,222 @@
 package edu.mit.media.mysnapshot.activities
 
-import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.preference.PreferenceManager
-import android.util.TypedValue
-import android.view.Gravity
-import android.view.View
-import android.view.animation.Animation
-import android.view.animation.LinearInterpolator
-import android.view.animation.RotateAnimation
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.R
-import edu.mit.media.mysnapshot.activities.fragments.FailedStageFragment
-import edu.mit.media.mysnapshot.activities.fragments.NewStageFragment
 import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.CheckinOutcome
 import edu.mit.media.mysnapshot.engine.ExperimentEngine
 import edu.mit.media.mysnapshot.engine.ExperimentType
-import edu.mit.media.mysnapshot.view.FontTextView
+import edu.mit.media.mysnapshot.ui.theme.AccentRed
+import edu.mit.media.mysnapshot.ui.theme.DarkPurple
+import edu.mit.media.mysnapshot.ui.theme.FadeBlue
+import edu.mit.media.mysnapshot.ui.theme.FadeGreen
+import edu.mit.media.mysnapshot.ui.theme.FadeYellow
+import edu.mit.media.mysnapshot.ui.theme.QuantifyMeFonts
+import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
+import edu.mit.media.mysnapshot.ui.theme.Yellow
+import edu.mit.media.mysnapshot.ui.theme.rememberQuantifyMeFonts
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class ExperimentInstructionsActivity : PermissionCheckingAppCompatActivity() {
+class ExperimentInstructionsActivity : ComponentActivity() {
 
     @Inject
     lateinit var repository: ExperimentRepository
 
-    private var experiment: ExperimentEntity? = null
-    private var pendingOutcome: CheckinOutcome? = null
+    private var resumeTrigger by mutableIntStateOf(0)
     private var dialogsShown = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        setContent {
+            QuantifyMeTheme {
+                val fonts = rememberQuantifyMeFonts()
+                var uiState by remember { mutableStateOf<InstructionsUiState>(InstructionsUiState.Loading) }
+                var isRefreshing by remember { mutableStateOf(false) }
+                var newStageDialogVisible by remember { mutableStateOf(false) }
+                var failedStageDialogVisible by remember { mutableStateOf(false) }
+                var failedStageReason by remember { mutableStateOf<ExperimentEngine.RestartReason?>(null) }
+                var progressOptInDialogVisible by remember { mutableStateOf(false) }
+
+                LaunchedEffect(resumeTrigger) {
+                    val launchIntent = intent
+                    val experimentId = launchIntent.getIntExtra(EXPERIMENT_ID_EXTRA, -1)
+                    val pendingOutcome = if (launchIntent.getBooleanExtra(HAS_OUTCOME_EXTRA, false)) {
+                        outcomeFromIntent(launchIntent)
+                    } else {
+                        null
+                    }
+
+                    val current = if (experimentId != -1) {
+                        repository.getExperimentById(experimentId).first()
+                    } else {
+                        repository.getLatestExperiment().first()
+                    }
+
+                    if (current == null) {
+                        startActivity(Intent(this@ExperimentInstructionsActivity, MainActivity::class.java))
+                        finish()
+                        overridePendingTransition(0, 0)
+                        return@LaunchedEffect
+                    }
+
+                    if (!current.isActive) {
+                        ExperimentCompleteActivity.startActivity(this@ExperimentInstructionsActivity, current.id)
+                        finish()
+                        overridePendingTransition(0, 0)
+                        return@LaunchedEffect
+                    }
+
+                    val checkins = repository.getCheckinsForExperiment(current.id).first()
+                    if (checkins.isEmpty()) {
+                        uiState = InstructionsUiState.FirstDay
+                        return@LaunchedEffect
+                    }
+
+                    val outcome = pendingOutcome ?: repository.refreshInstructions(current.id)
+
+                    if (!dialogsShown) {
+                        dialogsShown = true
+                        if (outcome.restartedStage) {
+                            failedStageReason = outcome.restartReason
+                            failedStageDialogVisible = true
+                        } else if (outcome.newStage || MainActivity.FORCE_NEW_STAGE_DIALOG) {
+                            newStageDialogVisible = true
+                        }
+                    }
+
+                    uiState = InstructionsUiState.Instructions(
+                        experiment = current,
+                        experimentType = ExperimentType.fromTypeKey(current.type),
+                        outcome = outcome
+                    )
+                }
+
+                InstructionsScreen(
+                    uiState = uiState,
+                    isRefreshing = isRefreshing,
+                    fonts = fonts,
+                    onSettingsClick = { startActivity(Intent(this@ExperimentInstructionsActivity, SettingsActivity::class.java)) },
+                    onHistoryClick = { startActivity(Intent(this@ExperimentInstructionsActivity, HistoryActivity::class.java)) },
+                    onRefreshClick = {
+                        val experiment = (uiState as? InstructionsUiState.Instructions)?.experiment
+                        if (experiment != null && !isRefreshing) {
+                            isRefreshing = true
+                            lifecycleScope.launch {
+                                val outcome = repository.refreshInstructions(experiment.id)
+                                uiState = InstructionsUiState.Instructions(
+                                    experiment = experiment,
+                                    experimentType = ExperimentType.fromTypeKey(experiment.type),
+                                    outcome = outcome
+                                )
+                                isRefreshing = false
+                            }
+                        }
+                    },
+                    onProgressClick = {
+                        val experiment = (uiState as? InstructionsUiState.Instructions)?.experiment
+                        if (experiment != null) {
+                            val prefs = PreferenceManager.getDefaultSharedPreferences(this@ExperimentInstructionsActivity)
+                            if (prefs.getBoolean(SHOW_PROGRESS_PREF, false)) {
+                                ExperimentProgressActivity.startActivity(this@ExperimentInstructionsActivity, experiment.id)
+                            } else {
+                                progressOptInDialogVisible = true
+                            }
+                        }
+                    }
+                )
+
+                if (newStageDialogVisible) {
+                    NewStageDialog(fonts = fonts, onDismiss = { newStageDialogVisible = false })
+                }
+                if (failedStageDialogVisible) {
+                    FailedStageDialog(
+                        reason = failedStageReason,
+                        fonts = fonts,
+                        onDismiss = { failedStageDialogVisible = false }
+                    )
+                }
+                if (progressOptInDialogVisible) {
+                    ProgressOptInDialog(
+                        onDismiss = { progressOptInDialogVisible = false },
+                        onConfirm = {
+                            progressOptInDialogVisible = false
+                            val experiment = (uiState as? InstructionsUiState.Instructions)?.experiment
+                            if (experiment != null) {
+                                PreferenceManager.getDefaultSharedPreferences(this@ExperimentInstructionsActivity)
+                                    .edit()
+                                    .putBoolean(SHOW_PROGRESS_PREF, true)
+                                    .apply()
+                                ExperimentProgressActivity.startActivity(this@ExperimentInstructionsActivity, experiment.id)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
 
     override fun onResume() {
         super.onResume()
-
-        val experimentId = intent.getIntExtra(EXPERIMENT_ID_EXTRA, -1)
-        pendingOutcome = if (intent.getBooleanExtra(HAS_OUTCOME_EXTRA, false)) outcomeFromIntent(intent) else null
-
-        lifecycleScope.launch {
-            val current = if (experimentId != -1) {
-                repository.getExperimentById(experimentId).first()
-            } else {
-                repository.getLatestExperiment().first()
-            }
-            experiment = current
-
-            if (current == null) {
-                startActivity(Intent(this@ExperimentInstructionsActivity, MainActivity::class.java))
-                finish()
-                overridePendingTransition(0, 0)
-                return@launch
-            }
-
-            if (!current.isActive) {
-                ExperimentCompleteActivity.startActivity(this@ExperimentInstructionsActivity, current.id)
-                finish()
-                overridePendingTransition(0, 0)
-                return@launch
-            }
-
-            val checkins = repository.getCheckinsForExperiment(current.id).first()
-            if (checkins.isEmpty()) {
-                initFirstDayView()
-                return@launch
-            }
-
-            val outcome = pendingOutcome ?: repository.refreshInstructions(current.id)
-            initViews(current, outcome)
-        }
-    }
-
-    private fun initFirstDayView() {
-        setContentView(R.layout.activity_experiment_first_day)
-
-        findViewById<View>(R.id.settings).setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
-        }
-        findViewById<View>(R.id.history).setOnClickListener {
-            startActivity(Intent(this, HistoryActivity::class.java))
-        }
-    }
-
-    private fun initViews(experiment: ExperimentEntity, outcome: CheckinOutcome) {
-        val experimentType = ExperimentType.fromTypeKey(experiment.type)
-
-        setContentView(R.layout.activity_experiment_instructions)
-
-        if (!dialogsShown) {
-            dialogsShown = true
-            if (outcome.restartedStage) {
-                FailedStageFragment.showDialog(this, outcome.restartReason)
-            } else if (outcome.newStage || MainActivity.FORCE_NEW_STAGE_DIALOG) {
-                NewStageFragment.showDialog(this)
-            }
-        }
-
-        val questionView = findViewById<TextView>(R.id.question)
-        questionView.text = experimentType.name
-
-        if (outcome.currentStage == 0) {
-            findViewById<View>(R.id.target_container).visibility = View.GONE
-        }
-
-        val stageView = findViewById<TextView>(R.id.stage)
-        stageView.text = "Stage " + (outcome.currentStage + 1)
-
-        val iconView = findViewById<ImageView>(R.id.icon)
-        iconView.setImageDrawable(resources.getDrawable(experimentType.iconId))
-
-        val instructionsView = findViewById<TextView>(R.id.stage_instructions)
-        val instructions = resources.getStringArray(R.array.stage_instructions)
-        instructionsView.text = instructions.getOrNull(outcome.currentStage) ?: ""
-
-        val targetView = findViewById<TextView>(R.id.target)
-        targetView.text = outcome.target?.let { experimentType.formatInstruction(it) } ?: ""
-
-        findViewById<View>(R.id.settings).setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
-        }
-        findViewById<View>(R.id.history).setOnClickListener {
-            startActivity(Intent(this, HistoryActivity::class.java))
-        }
-        findViewById<View>(R.id.refresh).setOnClickListener {
-            refreshInstructions(experiment)
-        }
-        findViewById<View>(R.id.progress).setOnClickListener {
-            onProgressClicked(experiment.id)
-        }
-
-        var inputGrid = findViewById<LinearLayout>(R.id.progressgrid)
-        inputGrid.removeAllViews()
-
-        val backgroundColor = (findViewById<View>(R.id.bg).background as ColorDrawable).color
-
-        for (i in 0 until 7) {
-            val input = outcome.stageInputs.getOrNull(i)
-            val v = FontTextView(this, null)
-            val params = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1.0f)
-            v.layoutParams = params
-            v.setPadding(0, 10, 0, 10)
-            v.setTypeFaceName(FontTextView.RALEWAY)
-            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            v.setBackgroundColor(backgroundColor)
-            v.gravity = Gravity.CENTER
-            v.text = if (input != null) experimentType.formatTarget(input) else "-"
-            inputGrid.addView(v)
-
-            if (i == 3) {
-                inputGrid = findViewById(R.id.progressgrid_secondrow)
-                inputGrid.removeAllViews()
-            }
-        }
-        val v = FontTextView(this, null)
-        val params = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1.0f)
-        v.layoutParams = params
-        v.setBackgroundColor(backgroundColor)
-        inputGrid.addView(v)
-    }
-
-    /**
-     * Mid-experiment progress view is opt-in (paper §6.2: the original team withheld
-     * this to avoid biasing behavior). First tap explains that trade-off once; the
-     * choice is then remembered so it doesn't need re-confirming every day.
-     */
-    private fun onProgressClicked(experimentId: Int) {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        if (prefs.getBoolean(SHOW_PROGRESS_PREF, false)) {
-            ExperimentProgressActivity.startActivity(this, experimentId)
-            return
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("See Your Progress?")
-            .setMessage(
-                "You can see your check-in history for this experiment as it happens, " +
-                    "instead of waiting until it's done. Keep in mind that knowing your " +
-                    "past results might change how you behave going forward, which can " +
-                    "affect the experiment's accuracy. Turn this on?"
-            )
-            .setPositiveButton("Yes, show me") { _, _ ->
-                prefs.edit().putBoolean(SHOW_PROGRESS_PREF, true).apply()
-                ExperimentProgressActivity.startActivity(this, experimentId)
-            }
-            .setNegativeButton("No thanks", null)
-            .show()
-    }
-
-    private fun refreshInstructions(experiment: ExperimentEntity) {
-        val rotateAnimation = RotateAnimation(
-            0f, 360f,
-            Animation.RELATIVE_TO_SELF, 0.5f,
-            Animation.RELATIVE_TO_SELF, 0.5f
-        )
-        rotateAnimation.interpolator = LinearInterpolator()
-        rotateAnimation.duration = 500
-        rotateAnimation.repeatCount = Animation.INFINITE
-
-        findViewById<View>(R.id.refresh).startAnimation(rotateAnimation)
-
-        lifecycleScope.launch {
-            val outcome = repository.refreshInstructions(experiment.id)
-            initViews(experiment, outcome)
-        }
+        resumeTrigger++
     }
 
     companion object {
@@ -267,4 +273,369 @@ class ExperimentInstructionsActivity : PermissionCheckingAppCompatActivity() {
             )
         }
     }
+}
+
+private sealed interface InstructionsUiState {
+    data object Loading : InstructionsUiState
+    data object FirstDay : InstructionsUiState
+    data class Instructions(
+        val experiment: ExperimentEntity,
+        val experimentType: ExperimentType,
+        val outcome: CheckinOutcome
+    ) : InstructionsUiState
+}
+
+@Composable
+private fun InstructionsScreen(
+    uiState: InstructionsUiState,
+    isRefreshing: Boolean,
+    fonts: QuantifyMeFonts,
+    onSettingsClick: () -> Unit,
+    onHistoryClick: () -> Unit,
+    onRefreshClick: () -> Unit,
+    onProgressClick: () -> Unit
+) {
+    when (uiState) {
+        InstructionsUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        InstructionsUiState.FirstDay -> FirstDayScreen(
+            onSettingsClick = onSettingsClick,
+            onHistoryClick = onHistoryClick
+        )
+        is InstructionsUiState.Instructions -> InstructionsContent(
+            experimentType = uiState.experimentType,
+            outcome = uiState.outcome,
+            fonts = fonts,
+            isRefreshing = isRefreshing,
+            onSettingsClick = onSettingsClick,
+            onHistoryClick = onHistoryClick,
+            onRefreshClick = onRefreshClick,
+            onProgressClick = onProgressClick
+        )
+    }
+}
+
+@Composable
+private fun FirstDayScreen(onSettingsClick: () -> Unit, onHistoryClick: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().background(FadeGreen)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp, bottom = 10.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            HeaderIcon(R.drawable.button_profile, "Settings", onSettingsClick, tinted = false)
+            HeaderIcon(R.drawable.button_home, "History", onHistoryClick, tinted = false)
+        }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                text = "Your experiment is being created. Check back tomorrow morning " +
+                    "(and every morning!) to check in and see what to do.",
+                fontSize = 18.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 30.dp, vertical = 20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun InstructionsContent(
+    experimentType: ExperimentType,
+    outcome: CheckinOutcome,
+    fonts: QuantifyMeFonts,
+    isRefreshing: Boolean,
+    onSettingsClick: () -> Unit,
+    onHistoryClick: () -> Unit,
+    onRefreshClick: () -> Unit,
+    onProgressClick: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize().background(FadeYellow)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp, bottom = 10.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            HeaderIcon(R.drawable.icon_settings_chart, "Progress", onProgressClick)
+            RefreshHeaderIcon(isRefreshing = isRefreshing, onClick = onRefreshClick)
+            HeaderIcon(R.drawable.button_profile, "Settings", onSettingsClick)
+            HeaderIcon(R.drawable.button_home, "History", onHistoryClick)
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 50.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.padding(top = 20.dp, bottom = 30.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter = painterResource(experimentType.iconId),
+                    contentDescription = null,
+                    modifier = Modifier.size(60.dp)
+                )
+                Text(
+                    text = experimentType.name,
+                    fontFamily = fonts.raleway,
+                    fontSize = 18.sp,
+                    modifier = Modifier.padding(start = 20.dp)
+                )
+            }
+
+            if (outcome.currentStage != 0) {
+                Text(
+                    text = "Today's Target",
+                    fontFamily = fonts.montserratBold,
+                    fontSize = 24.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 10.dp)
+                )
+                Text(
+                    text = outcome.target?.let { experimentType.formatInstruction(it) } ?: "",
+                    fontFamily = fonts.ralewaySemibold,
+                    fontSize = 24.sp,
+                    color = DarkPurple,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 30.dp, start = 15.dp, end = 15.dp)
+                )
+            }
+
+            Text(
+                text = "Stage ${outcome.currentStage + 1}",
+                fontFamily = fonts.montserratBold,
+                fontSize = 24.sp,
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+
+            val stageInstructions = stringArrayResource(R.array.stage_instructions)
+            Text(
+                text = stageInstructions.getOrNull(outcome.currentStage) ?: "",
+                fontFamily = fonts.raleway,
+                fontSize = 18.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 30.dp)
+            )
+
+            Text(
+                text = "Stage Progress",
+                fontFamily = fonts.montserratBold,
+                fontSize = 24.sp,
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+
+            ProgressGridRow(
+                cellTexts = (0..3).map { i ->
+                    outcome.stageInputs.getOrNull(i)?.let { experimentType.formatTarget(it) } ?: "-"
+                },
+                fonts = fonts
+            )
+            ProgressGridRow(
+                cellTexts = (4..6).map { i ->
+                    outcome.stageInputs.getOrNull(i)?.let { experimentType.formatTarget(it) } ?: "-"
+                } + "",
+                fonts = fonts
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProgressGridRow(cellTexts: List<String>, fonts: QuantifyMeFonts) {
+    Row(modifier = Modifier.fillMaxWidth().background(Yellow)) {
+        cellTexts.forEachIndexed { index, text ->
+            if (index > 0) {
+                Spacer(modifier = Modifier.width(1.dp).fillMaxHeight())
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = text, fontFamily = fonts.raleway, fontSize = 14.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderIcon(
+    @DrawableRes iconId: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+    tinted: Boolean = true,
+    iconPadding: Dp = 10.dp
+) {
+    Image(
+        painter = painterResource(iconId),
+        contentDescription = contentDescription,
+        colorFilter = if (tinted) ColorFilter.tint(AccentRed) else null,
+        modifier = Modifier
+            .size(50.dp)
+            .clickable(onClick = onClick)
+            .padding(iconPadding)
+    )
+}
+
+@Composable
+private fun RefreshHeaderIcon(isRefreshing: Boolean, onClick: () -> Unit) {
+    val infiniteTransition = rememberInfiniteTransition(label = "refresh-rotation")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(animation = tween(durationMillis = 500, easing = LinearEasing)),
+        label = "refresh-rotation-value"
+    )
+
+    Image(
+        painter = painterResource(R.drawable.button_refresh),
+        contentDescription = "Refresh",
+        colorFilter = ColorFilter.tint(AccentRed),
+        modifier = Modifier
+            .size(50.dp)
+            .clickable(enabled = !isRefreshing, onClick = onClick)
+            .padding(13.dp)
+            .let { if (isRefreshing) it.rotate(rotation) else it }
+    )
+}
+
+@Composable
+private fun NewStageDialog(fonts: QuantifyMeFonts, onDismiss: () -> Unit) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Surface(modifier = Modifier.fillMaxSize(), color = FadeYellow) {
+            Box(modifier = Modifier.fillMaxSize().clickable(onClick = onDismiss)) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "New Stage\nUnlocked!",
+                        fontFamily = fonts.montserratRegular,
+                        fontSize = 40.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Image(
+                        painter = painterResource(R.drawable.icon_settings_birthday),
+                        contentDescription = null,
+                        modifier = Modifier.size(70.dp).padding(top = 30.dp)
+                    )
+                    Text(
+                        text = "You did it! That stage is complete, and you're on to the next one. Congratulations!",
+                        fontSize = 20.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 50.dp)
+                    )
+                }
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 40.dp, vertical = 30.dp)
+                ) {
+                    Text("Yay!")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FailedStageDialog(
+    reason: ExperimentEngine.RestartReason?,
+    fonts: QuantifyMeFonts,
+    onDismiss: () -> Unit
+) {
+    val reasonText = when (reason) {
+        ExperimentEngine.RestartReason.TOO_MANY_MISSED_DAYS -> stringResource(R.string.restart_reason_missed_days)
+        ExperimentEngine.RestartReason.TARGET_ZONE_UNREACHABLE -> stringResource(R.string.restart_reason_target_zone_unreachable)
+        null -> stringResource(R.string.restart_reason_generic)
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Surface(modifier = Modifier.fillMaxSize(), color = FadeBlue) {
+            Box(modifier = Modifier.fillMaxSize().clickable(onClick = onDismiss)) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Stage Restarting!",
+                        fontFamily = fonts.montserratRegular,
+                        fontSize = 26.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Image(
+                        painter = painterResource(R.drawable.icon_settings_sad),
+                        contentDescription = null,
+                        modifier = Modifier.size(60.dp).padding(top = 30.dp)
+                    )
+                    Text(
+                        text = reasonText,
+                        fontSize = 18.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 50.dp)
+                    )
+                    Text(
+                        text = "Please be sure to wear your tracker and checkin here every day, " +
+                            "and to hit the target goals.",
+                        fontSize = 18.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 30.dp)
+                    )
+                }
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 40.dp, vertical = 30.dp)
+                ) {
+                    Text("Okay. Got it.")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProgressOptInDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("See Your Progress?") },
+        text = {
+            Text(
+                "You can see your check-in history for this experiment as it happens, " +
+                    "instead of waiting until it's done. Keep in mind that knowing your " +
+                    "past results might change how you behave going forward, which can " +
+                    "affect the experiment's accuracy. Turn this on?"
+            )
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) { Text("Yes, show me") }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) { Text("No thanks") }
+        }
+    )
 }

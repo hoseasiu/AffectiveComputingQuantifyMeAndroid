@@ -9,7 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.data.ExperimentRepository
-import edu.mit.media.mysnapshot.notifications.AlarmReceiver
+import edu.mit.media.mysnapshot.notifications.CheckinReminderWorker
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.joda.time.LocalDate
@@ -68,7 +68,7 @@ class MainActivity : AppCompatActivity() {
     fun clearNotifications(intent: Intent) {
         if (CLICK_NOTIFICATION_ACTION == intent.action) {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.cancel(AlarmReceiver.NOTIFICATION_ID)
+            notificationManager.cancel(CheckinReminderWorker.NOTIFICATION_ID)
         }
     }
 

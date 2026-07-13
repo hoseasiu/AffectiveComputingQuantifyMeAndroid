@@ -2,17 +2,47 @@ package edu.mit.media.mysnapshot.activities
 
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.R
 import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.engine.ExperimentType
+import edu.mit.media.mysnapshot.ui.theme.DarkBlue
+import edu.mit.media.mysnapshot.ui.theme.FadeBlue
+import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
+import edu.mit.media.mysnapshot.ui.theme.White
+import edu.mit.media.mysnapshot.ui.theme.rememberQuantifyMeFonts
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class ExperimentChooseActivity : PermissionCheckingAppCompatActivity() {
+class ExperimentChooseActivity : ComponentActivity() {
 
     @Inject
     lateinit var repository: ExperimentRepository
@@ -20,17 +50,14 @@ class ExperimentChooseActivity : PermissionCheckingAppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_experiment_choose)
-
-        initButton(R.id.leisurehappiness, ExperimentType.LeisureHappiness)
-        initButton(R.id.stepssleepefficiency, ExperimentType.StepsSleepEfficiency)
-        initButton(R.id.sleepdurationproductivity, ExperimentType.SleepDurationProductivity)
-        initButton(R.id.sleepvariabilitystress, ExperimentType.SleepVariabilityStress)
-    }
-
-    private fun initButton(buttonId: Int, experimentType: ExperimentType) {
-        findViewById<android.view.View>(buttonId).setOnClickListener {
-            ExperimentIntroActivity.startActivity(this, experimentType)
+        setContent {
+            QuantifyMeTheme {
+                ExperimentChooseScreen(
+                    onExperimentTypeSelected = { type ->
+                        ExperimentIntroActivity.startActivity(this, type)
+                    }
+                )
+            }
         }
     }
 
@@ -49,5 +76,75 @@ class ExperimentChooseActivity : PermissionCheckingAppCompatActivity() {
 
     companion object {
         const val LOGTAG = "ExperimentChooseActivity"
+    }
+}
+
+private val chooseItems = listOf(
+    R.drawable.experiment_choose_leisurehappy to ExperimentType.LeisureHappiness,
+    R.drawable.experiment_choose_stepssleepefficiency to ExperimentType.StepsSleepEfficiency,
+    R.drawable.experiment_choose_sleepdurationproductivity to ExperimentType.SleepDurationProductivity,
+    R.drawable.experiment_choose_sleepvariabilitystress to ExperimentType.SleepVariabilityStress
+)
+
+@Composable
+private fun ExperimentChooseScreen(onExperimentTypeSelected: (ExperimentType) -> Unit) {
+    val fonts = rememberQuantifyMeFonts()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(FadeBlue)
+                .padding(top = 60.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 15.dp, vertical = 20.dp)
+        ) {
+            chooseItems.forEach { (drawableId, type) ->
+                Card(
+                    onClick = { onExperimentTypeSelected(type) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 7.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+                ) {
+                    Image(
+                        painter = painterResource(drawableId),
+                        contentDescription = type.name,
+                        contentScale = ContentScale.FillWidth,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopStart),
+            shape = RoundedCornerShape(0.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 7.dp)
+        ) {
+            Box {
+                Text(
+                    text = "Select Your Experiment",
+                    color = White,
+                    fontFamily = fonts.raleway,
+                    fontSize = 20.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(DarkBlue)
+                        .padding(top = 25.dp, bottom = 20.dp)
+                )
+                Image(
+                    painter = painterResource(R.drawable.icon_settings_experiment_effectiveness),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(start = 20.dp, top = 15.dp)
+                        .size(40.dp)
+                )
+            }
+        }
     }
 }
