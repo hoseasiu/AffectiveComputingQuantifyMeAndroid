@@ -1,13 +1,18 @@
 package edu.mit.media.mysnapshot.activities
 
+import android.Manifest
 import android.app.DialogFragment
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.preference.PreferenceManager
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.health.connect.client.PermissionController
 import com.google.gson.Gson
@@ -25,6 +30,7 @@ import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionNotificati
 import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionRadioGroupFragment
 import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionSpinnerFragment
 import edu.mit.media.mysnapshot.health.HealthConnectManager
+import edu.mit.media.mysnapshot.notifications.CheckinReminderScheduler
 import edu.mit.media.mysnapshot.view.SelectableIcon
 import java.util.TimeZone
 
@@ -55,6 +61,20 @@ class SettingsActivity : QuestionActivity() {
 
     fun requestHealthConnectPermissions() {
         healthConnectPermissionLauncher.launch(HealthConnectManager.PERMISSIONS)
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* no-op either way -- CheckinReminderWorker checks the permission again before notifying */ }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     override fun getLayoutId(): Int = R.layout.activity_settings
@@ -97,6 +117,10 @@ class SettingsActivity : QuestionActivity() {
         userData!!.timezone = timezone
 
         saveUserData()
+        if (userData!!.notificationData!!.notificationSet) {
+            requestNotificationPermissionIfNeeded()
+        }
+        CheckinReminderScheduler.schedule(this)
 
         if (isBuildingData()) {
             val intent = Intent(this@SettingsActivity, IntroThanksActivity::class.java)
