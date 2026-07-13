@@ -18,9 +18,12 @@ import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionTextAction
 import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.ExperimentType
+import edu.mit.media.mysnapshot.health.HealthConnectManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -29,8 +32,12 @@ class ExperimentCheckinActivity : QuestionActivity() {
     @Inject
     lateinit var repository: ExperimentRepository
 
+    @Inject
+    lateinit var healthConnect: HealthConnectManager
+
     private var experiment: ExperimentEntity? = null
     private lateinit var experimentType: ExperimentType
+    private var sleepNightExplanation: String? = null
 
     private lateinit var textFragment: QuestionTextActionButtonFragment
     private lateinit var didFollowDirections: QuestionRadioGroupFragment
@@ -47,7 +54,27 @@ class ExperimentCheckinActivity : QuestionActivity() {
         }
         experimentType = experiment?.let { ExperimentType.fromTypeKey(it.type) } ?: ExperimentType.LeisureHappiness
 
+        if (experimentType.usesSleepData) {
+            sleepNightExplanation = runBlocking { buildSleepNightExplanation() }
+        }
+
         super.onCreate(savedInstanceState)
+    }
+
+    /**
+     * Paper §6.3: participants didn't understand what counted as "a night" when they
+     * slept past midnight. Health Connect gives explicit session start/end, so surface
+     * it directly instead of leaving the day-boundary silently inferred.
+     */
+    private suspend fun buildSleepNightExplanation(): String? {
+        val session = healthConnect.getMostRecentSleepSession() ?: return null
+        val zone = ZoneId.systemDefault()
+        val timeFormat = DateTimeFormatter.ofPattern("h:mm a")
+        val start = session.startTime.atZone(zone)
+        val end = session.endTime.atZone(zone)
+        val night = session.attributedNight.toString("EEEE, MMM d")
+        return "We counted your sleep from ${start.format(timeFormat)} to ${end.format(timeFormat)} " +
+            "as the night of $night (a night belongs to the day you woke up, not the day you fell asleep)."
     }
 
     override fun getLayoutId(): Int = R.layout.activity_experiment_config
@@ -87,8 +114,10 @@ class ExperimentCheckinActivity : QuestionActivity() {
     private fun initText(fragments: MutableList<Fragment>) {
         textFragment = QuestionTextActionButtonFragment()
         textFragment.setLayout(QuestionFragment.Layout(experimentType.iconId, "Daily Check In"))
+        var introText = "We're going to ask you a couple quick questions about your day, then we'll let you know what you should do for your experiment.\n\nYou only need to check in once a day!"
+        sleepNightExplanation?.let { introText += "\n\n$it" }
         textFragment.init(
-            "We're going to ask you a couple quick questions about your day, then we'll let you know what you should do for your experiment.\n\nYou only need to check in once a day!",
+            introText,
             android.view.View.OnClickListener {
                 val launchIntent = packageManager.getLaunchIntentForPackage("com.google.android.apps.healthdata")
                 if (launchIntent != null) {

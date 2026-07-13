@@ -46,6 +46,7 @@
             android:id="@+id/imageView6" />
 
         <edu.mit.media.mysnapshot.view.FontTextView
+            android:id="@+id/reason_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="18sp"
@@ -59,6 +60,7 @@
              />
 
         <edu.mit.media.mysnapshot.view.FontTextView
+            android:id="@+id/advice_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="18sp"

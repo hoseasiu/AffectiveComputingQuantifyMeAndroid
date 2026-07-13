@@ -88,6 +88,46 @@ class ExperimentRepository @Inject constructor(
         }
     }
 
+    /** One stage's date range, restart count, and the check-ins recorded within it. */
+    data class StageProgress(
+        val stage: Int,
+        val start: LocalDate?,
+        val end: LocalDate?,
+        val restartCount: Int,
+        val checkins: List<CheckinEntity>
+    )
+
+    /**
+     * Mid-experiment progress across every stage reached so far (paper §6.2: 4/13 pilot
+     * users wanted to see their history *during* the experiment, not just after). Unlike
+     * the day-by-day target grid already shown for the *current* stage, this spans the
+     * whole experiment. Opt-in only -- see `ExperimentInstructionsActivity`.
+     */
+    suspend fun getProgressSummary(experimentId: Int): List<StageProgress> {
+        val experiment = experimentDao.getById(experimentId).first()
+            ?: error("No experiment with id $experimentId")
+        val state = ExperimentStageState.fromJson(
+            experiment.stageDatesJson, experiment.stageTargetValuesJson, experiment.stageRestartCountJson
+        )
+        val checkins = checkinDao.getCheckinsForExperiment(experimentId).first()
+        val lastStage = minOf(experiment.currentStage, ExperimentEngine.NUM_STAGES)
+
+        return (1..lastStage).map { stage ->
+            val (start, end) = state.stageDates.getOrNull(stage) ?: (null to null)
+            val stageCheckins = checkins.filter { checkin ->
+                val date = LocalDate(checkin.checkinDate)
+                start != null && !date.isBefore(start) && (end == null || !date.isAfter(end))
+            }
+            StageProgress(
+                stage = stage,
+                start = start,
+                end = end,
+                restartCount = state.stageRestartCount.getOrElse(stage) { 0 },
+                checkins = stageCheckins
+            )
+        }
+    }
+
     /** Equivalent of `/refresh_instructions/`: recompute today's instruction, no new check-in. */
     suspend fun refreshInstructions(experimentId: Int): CheckinOutcome {
         val experiment = experimentDao.getById(experimentId).first()
@@ -226,6 +266,7 @@ class ExperimentRepository @Inject constructor(
             newStage = decision.shouldEnd,
             endedEarly = decision.endedEarly,
             restartedStage = decision.restartedStage,
+            restartReason = decision.restartReason,
             currentStage = currentStageNum,
             target = dailyTarget,
             day = dayInStage,

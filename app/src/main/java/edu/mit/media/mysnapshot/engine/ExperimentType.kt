@@ -24,7 +24,8 @@ sealed class ExperimentType(
     val rangeSize: Float,
     val stableRange: Float,
     val useVariability: Boolean,
-    val shouldMinimizeResult: Boolean
+    val shouldMinimizeResult: Boolean,
+    val usesSleepData: Boolean = false
 ) {
     abstract fun formatInstruction(value: Float): String
     abstract fun formatTarget(target: Float): String
@@ -66,7 +67,8 @@ sealed class ExperimentType(
         rangeSize = 15f,
         stableRange = 3f,
         useVariability = true,
-        shouldMinimizeResult = true
+        shouldMinimizeResult = true,
+        usesSleepData = true
     ) {
         override fun formatResult(value: Float): String {
             val df = DecimalFormat("#.##")
@@ -100,7 +102,8 @@ sealed class ExperimentType(
         rangeSize = 30f,
         stableRange = 3f,
         useVariability = false,
-        shouldMinimizeResult = false
+        shouldMinimizeResult = false,
+        usesSleepData = true
     ) {
         override fun formatInstruction(value: Float): String {
             val df = DecimalFormat("#.##")
@@ -127,7 +130,8 @@ sealed class ExperimentType(
         rangeSize = 1500f,
         stableRange = 0.1f,
         useVariability = false,
-        shouldMinimizeResult = false
+        shouldMinimizeResult = false,
+        usesSleepData = true
     ) {
         override fun formatResult(value: Float): String {
             val df = DecimalFormat("#.##")

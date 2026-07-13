@@ -21,6 +21,15 @@
         <ImageView
             android:layout_width="50dp"
             android:layout_height="50dp"
+            android:padding="10dp"
+            android:tint="@color/accent"
+            android:layout_marginRight="15dp"
+            android:src="@drawable/icon_settings_chart"
+            android:id="@+id/progress" />
+
+        <ImageView
+            android:layout_width="50dp"
+            android:layout_height="50dp"
             android:padding="13dp"
             android:tint="@color/accent"
             android:layout_marginRight="15dp"
