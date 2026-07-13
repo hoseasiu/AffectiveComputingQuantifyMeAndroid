@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import edu.mit.media.mysnapshot.notifications.AdherenceNudgeScheduler
 import edu.mit.media.mysnapshot.notifications.CheckinReminderScheduler
 import org.acra.ACRA
 import org.acra.config.CoreConfigurationBuilder
@@ -36,6 +37,7 @@ class MyApplication : Application(), Configuration.Provider {
         // enqueueUniquePeriodicWork's UPDATE policy makes this a no-op if the schedule
         // already matches, so calling it here doesn't fight with SettingsActivity's own call.
         CheckinReminderScheduler.schedule(this)
+        AdherenceNudgeScheduler.schedule(this)
     }
 
     override fun attachBaseContext(base: Context) {
