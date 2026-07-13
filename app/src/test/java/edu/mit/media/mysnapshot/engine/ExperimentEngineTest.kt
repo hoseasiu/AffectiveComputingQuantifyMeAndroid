@@ -153,6 +153,7 @@ class ExperimentEngineTest {
         assertFalse(d.shouldEnd)
         assertTrue(d.endedEarly)
         assertTrue(d.restartedStage)
+        assertEquals(ExperimentEngine.RestartReason.TOO_MANY_MISSED_DAYS, d.restartReason)
     }
 
     @Test
@@ -169,6 +170,7 @@ class ExperimentEngineTest {
         assertFalse(d.shouldEnd)
         assertTrue(d.endedEarly)
         assertTrue(d.restartedStage)
+        assertEquals(ExperimentEngine.RestartReason.TOO_MANY_MISSED_DAYS, d.restartReason)
     }
 
     @Test
@@ -193,6 +195,7 @@ class ExperimentEngineTest {
         assertFalse(d.shouldEnd)
         assertTrue(d.endedEarly)
         assertTrue(d.restartedStage)
+        assertEquals(ExperimentEngine.RestartReason.TARGET_ZONE_UNREACHABLE, d.restartReason)
     }
 
     @Test

@@ -113,6 +113,16 @@ By clicking "I agree" you acknowledge that this app runs entirely on your device
         <item>Almost done! Just this one last routine change, and we\'ll be able to calculate everything we need!</item>
     </string-array>
 
+    <string name="restart_reason_missed_days"><![CDATA[
+        You missed too many check-ins or tracker readings this stage, so we don\'t have enough data to trust the result. We have to start this stage over.
+    ]]></string>
+    <string name="restart_reason_target_zone_unreachable"><![CDATA[
+        Your recent days have been landing outside this stage\'s target zone too often to reach a reliable result in the time left. We have to start this stage over so we can get enough days actually at the target.
+    ]]></string>
+    <string name="restart_reason_generic"><![CDATA[
+        Ack! Looks like we couldn\'t gather enough data for that stage, and we have to redo it.
+    ]]></string>
+
     <string-array name="iconcredits">
         <item>TBD</item>
     </string-array>

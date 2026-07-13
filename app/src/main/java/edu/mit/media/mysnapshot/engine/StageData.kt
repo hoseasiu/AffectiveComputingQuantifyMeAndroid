@@ -16,6 +16,7 @@ data class CheckinOutcome(
     val newStage: Boolean = false,
     val endedEarly: Boolean = false,
     val restartedStage: Boolean = false,
+    val restartReason: ExperimentEngine.RestartReason? = null,
     val currentStage: Int = 0,
     val target: Float? = null,
     val day: Int = 0,

@@ -99,6 +99,36 @@ class HealthConnectManager @Inject constructor(
         }
     }
 
+    /**
+     * The most recently completed sleep session, for explaining to the user which
+     * calendar night their data belongs to (paper §6.3: users didn't understand what
+     * counted as "a night" when they slept past midnight). A session is attributed to
+     * the calendar day its [SleepSessionRecord.endTime] falls on, matching
+     * [perDaySleepSession] above.
+     */
+    data class RecentSleepSession(
+        val startTime: Instant,
+        val endTime: Instant,
+        val attributedNight: LocalDate
+    )
+
+    suspend fun getMostRecentSleepSession(): RecentSleepSession? {
+        val client = client ?: return null
+        val end = LocalDate.now().plusDays(1)
+        val start = end.minusDays(3)
+        val session = client.readRecords(
+            ReadRecordsRequest(
+                recordType = SleepSessionRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(
+                    start.startOfDayInstant(), end.startOfDayInstant()
+                )
+            )
+        ).records.maxByOrNull { it.endTime }
+        return session?.let {
+            RecentSleepSession(it.startTime, it.endTime, LocalDate(it.endTime.toEpochMilli()))
+        }
+    }
+
     private suspend fun perDaySleepSession(
         startDate: LocalDate,
         endDateExclusive: LocalDate,
