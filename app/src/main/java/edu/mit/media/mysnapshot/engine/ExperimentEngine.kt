@@ -120,10 +120,20 @@ object ExperimentEngine {
         return missed
     }
 
+    /**
+     * Why a stage restarted, for surfacing a specific explanation to the user
+     * (paper §6.3/§6.4: participants didn't understand *why* things were restarting).
+     */
+    enum class RestartReason {
+        TOO_MANY_MISSED_DAYS,
+        TARGET_ZONE_UNREACHABLE
+    }
+
     data class StageEndDecision(
         val shouldEnd: Boolean,
         val endedEarly: Boolean,
-        val restartedStage: Boolean
+        val restartedStage: Boolean,
+        val restartReason: RestartReason? = null
     )
 
     /**
@@ -138,7 +148,10 @@ object ExperimentEngine {
         isOutputStable: Boolean
     ): StageEndDecision {
         if ((currentStage > 0 && missedDays >= 2) || (currentStage == 0 && missedDays > 2)) {
-            return StageEndDecision(shouldEnd = false, endedEarly = true, restartedStage = true)
+            return StageEndDecision(
+                shouldEnd = false, endedEarly = true, restartedStage = true,
+                restartReason = RestartReason.TOO_MANY_MISSED_DAYS
+            )
         }
 
         if (currentStage > 0) {
@@ -150,7 +163,10 @@ object ExperimentEngine {
                 val daysLeft = 7 - stageDay
                 val possibleValidDays = validDaysCount + daysLeft
                 if (possibleValidDays < 4) {
-                    return StageEndDecision(shouldEnd = false, endedEarly = true, restartedStage = true)
+                    return StageEndDecision(
+                        shouldEnd = false, endedEarly = true, restartedStage = true,
+                        restartReason = RestartReason.TARGET_ZONE_UNREACHABLE
+                    )
                 }
             }
         }

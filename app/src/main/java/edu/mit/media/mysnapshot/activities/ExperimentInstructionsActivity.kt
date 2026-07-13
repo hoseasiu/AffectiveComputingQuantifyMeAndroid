@@ -1,9 +1,11 @@
 package edu.mit.media.mysnapshot.activities
 
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -21,6 +23,7 @@ import edu.mit.media.mysnapshot.activities.fragments.NewStageFragment
 import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.CheckinOutcome
+import edu.mit.media.mysnapshot.engine.ExperimentEngine
 import edu.mit.media.mysnapshot.engine.ExperimentType
 import edu.mit.media.mysnapshot.view.FontTextView
 import kotlinx.coroutines.flow.first
@@ -95,7 +98,7 @@ class ExperimentInstructionsActivity : PermissionCheckingAppCompatActivity() {
         if (!dialogsShown) {
             dialogsShown = true
             if (outcome.restartedStage) {
-                FailedStageFragment.showDialog(this)
+                FailedStageFragment.showDialog(this, outcome.restartReason)
             } else if (outcome.newStage || MainActivity.FORCE_NEW_STAGE_DIALOG) {
                 NewStageFragment.showDialog(this)
             }
@@ -130,6 +133,9 @@ class ExperimentInstructionsActivity : PermissionCheckingAppCompatActivity() {
         findViewById<View>(R.id.refresh).setOnClickListener {
             refreshInstructions(experiment)
         }
+        findViewById<View>(R.id.progress).setOnClickListener {
+            onProgressClicked(experiment.id)
+        }
 
         var inputGrid = findViewById<LinearLayout>(R.id.progressgrid)
         inputGrid.removeAllViews()
@@ -161,6 +167,34 @@ class ExperimentInstructionsActivity : PermissionCheckingAppCompatActivity() {
         inputGrid.addView(v)
     }
 
+    /**
+     * Mid-experiment progress view is opt-in (paper §6.2: the original team withheld
+     * this to avoid biasing behavior). First tap explains that trade-off once; the
+     * choice is then remembered so it doesn't need re-confirming every day.
+     */
+    private fun onProgressClicked(experimentId: Int) {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        if (prefs.getBoolean(SHOW_PROGRESS_PREF, false)) {
+            ExperimentProgressActivity.startActivity(this, experimentId)
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("See Your Progress?")
+            .setMessage(
+                "You can see your check-in history for this experiment as it happens, " +
+                    "instead of waiting until it's done. Keep in mind that knowing your " +
+                    "past results might change how you behave going forward, which can " +
+                    "affect the experiment's accuracy. Turn this on?"
+            )
+            .setPositiveButton("Yes, show me") { _, _ ->
+                prefs.edit().putBoolean(SHOW_PROGRESS_PREF, true).apply()
+                ExperimentProgressActivity.startActivity(this, experimentId)
+            }
+            .setNegativeButton("No thanks", null)
+            .show()
+    }
+
     private fun refreshInstructions(experiment: ExperimentEntity) {
         val rotateAnimation = RotateAnimation(
             0f, 360f,
@@ -182,9 +216,11 @@ class ExperimentInstructionsActivity : PermissionCheckingAppCompatActivity() {
     companion object {
         const val LOGTAG = "ExperimentInstructionsActivity"
         const val EXPERIMENT_ID_EXTRA = "experiment_id"
+        private const val SHOW_PROGRESS_PREF = "show_progress_during_experiment"
         private const val HAS_OUTCOME_EXTRA = "has_outcome"
         private const val NEW_STAGE_EXTRA = "new_stage"
         private const val RESTARTED_STAGE_EXTRA = "restarted_stage"
+        private const val RESTART_REASON_EXTRA = "restart_reason"
         private const val CURRENT_STAGE_EXTRA = "current_stage"
         private const val TARGET_EXTRA = "target"
         private const val DAY_EXTRA = "day"
@@ -204,6 +240,7 @@ class ExperimentInstructionsActivity : PermissionCheckingAppCompatActivity() {
             intent.putExtra(HAS_OUTCOME_EXTRA, true)
             intent.putExtra(NEW_STAGE_EXTRA, outcome.newStage)
             intent.putExtra(RESTARTED_STAGE_EXTRA, outcome.restartedStage)
+            intent.putExtra(RESTART_REASON_EXTRA, outcome.restartReason?.name)
             intent.putExtra(CURRENT_STAGE_EXTRA, outcome.currentStage)
             intent.putExtra(TARGET_EXTRA, outcome.target ?: Float.NaN)
             intent.putExtra(DAY_EXTRA, outcome.day)
@@ -221,6 +258,8 @@ class ExperimentInstructionsActivity : PermissionCheckingAppCompatActivity() {
             return CheckinOutcome(
                 newStage = intent.getBooleanExtra(NEW_STAGE_EXTRA, false),
                 restartedStage = intent.getBooleanExtra(RESTARTED_STAGE_EXTRA, false),
+                restartReason = intent.getStringExtra(RESTART_REASON_EXTRA)
+                    ?.let { ExperimentEngine.RestartReason.valueOf(it) },
                 currentStage = intent.getIntExtra(CURRENT_STAGE_EXTRA, 0),
                 target = if (target.isNaN()) null else target,
                 day = intent.getIntExtra(DAY_EXTRA, 0),
