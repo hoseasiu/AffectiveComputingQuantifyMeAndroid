@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
@@ -21,7 +23,6 @@ import edu.mit.media.mysnapshot.engine.ExperimentType
 import edu.mit.media.mysnapshot.health.HealthConnectManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -36,8 +37,14 @@ class ExperimentCheckinActivity : QuestionActivity() {
     lateinit var healthConnect: HealthConnectManager
 
     private var experiment: ExperimentEntity? = null
-    private lateinit var experimentType: ExperimentType
+
+    // Placeholder until the async load (below) resolves the real experiment/type. initFragments()
+    // (called synchronously from QuestionActivity's onCreate) needs *some* value to build the intro
+    // fragment with, so we start with a harmless default and patch the rendered view in place once
+    // the real data arrives -- see applyLoadedExperimentData().
+    private var experimentType: ExperimentType = ExperimentType.LeisureHappiness
     private var sleepNightExplanation: String? = null
+    private var isLoadingExperiment = true
 
     private lateinit var textFragment: QuestionTextActionButtonFragment
     private lateinit var didFollowDirections: QuestionRadioGroupFragment
@@ -47,18 +54,31 @@ class ExperimentCheckinActivity : QuestionActivity() {
     private lateinit var leisure: QuestionSpinnerFragment
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val experimentId = intent.getIntExtra(EXPERIMENT_ID_EXTRA, -1)
-        experiment = runBlocking {
-            if (experimentId != -1) repository.getExperimentById(experimentId).first()
-            else repository.getLatestExperiment().first()
-        }
-        experimentType = experiment?.let { ExperimentType.fromTypeKey(it.type) } ?: ExperimentType.LeisureHappiness
-
-        if (experimentType.usesSleepData) {
-            sleepNightExplanation = runBlocking { buildSleepNightExplanation() }
-        }
-
+        // QuestionActivity.onCreate() synchronously builds the ViewPager/fragments (initFragments()
+        // is called from within it), so it must run before we know the real experiment data. The
+        // fragments are built with placeholder content below and patched once loading completes.
         super.onCreate(savedInstanceState)
+
+        val experimentId = intent.getIntExtra(EXPERIMENT_ID_EXTRA, -1)
+        lifecycleScope.launch {
+            val loadedExperiment = if (experimentId != -1) repository.getExperimentById(experimentId).first()
+                else repository.getLatestExperiment().first()
+
+            experiment = loadedExperiment
+            experimentType = loadedExperiment?.let { ExperimentType.fromTypeKey(it.type) } ?: ExperimentType.LeisureHappiness
+
+            if (experimentType.usesSleepData) {
+                sleepNightExplanation = buildSleepNightExplanation()
+            }
+
+            isLoadingExperiment = false
+
+            // Mirrors the validity checks onResume() performs once data is available; if we
+            // navigate away there's no point patching the (about to be destroyed) fragment view.
+            if (checkExperimentValidity()) {
+                applyLoadedExperimentData()
+            }
+        }
     }
 
     /**
@@ -80,10 +100,9 @@ class ExperimentCheckinActivity : QuestionActivity() {
     override fun getLayoutId(): Int = R.layout.activity_experiment_config
 
     override fun initFragments(fragments: MutableList<Fragment>, icons: MutableList<Drawable>) {
-        if (experiment == null) {
-            return
-        }
-
+        // Built eagerly (with placeholder experiment data where needed) so the ViewPager has its
+        // full page set from the start; only the intro fragment's content depends on the real
+        // experiment/type, which is patched in once the async load completes.
         initText(fragments)
         initDidFollowDirections(fragments)
         initLeisure(fragments)
@@ -95,29 +114,60 @@ class ExperimentCheckinActivity : QuestionActivity() {
     override fun onResume() {
         super.onResume()
 
+        if (isLoadingExperiment) {
+            // Validity is checked in the load callback (onCreate) once data is available.
+            return
+        }
+
+        checkExperimentValidity()
+    }
+
+    /**
+     * Redirects away if there's no current experiment, or the current one is no longer active.
+     * Returns true if the check-in screen should keep showing.
+     */
+    private fun checkExperimentValidity(): Boolean {
         val current = experiment
         if (current == null) {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
             overridePendingTransition(0, 0)
-            return
+            return false
         }
 
         if (!current.isActive) {
             ExperimentCompleteActivity.startActivity(this, current.id)
             finish()
             overridePendingTransition(0, 0)
-            return
+            return false
+        }
+
+        return true
+    }
+
+    private fun buildIntroText(): String {
+        var introText = "We're going to ask you a couple quick questions about your day, then we'll let you know what you should do for your experiment.\n\nYou only need to check in once a day!"
+        sleepNightExplanation?.let { introText += "\n\n$it" }
+        return introText
+    }
+
+    /**
+     * Patches the already-inflated intro fragment view with the real experiment icon/text once
+     * the async load (in onCreate) resolves. QuestionActivity doesn't expose its ViewPager/adapter
+     * fields for a full fragment rebuild, so we update the rendered views directly instead.
+     */
+    private fun applyLoadedExperimentData() {
+        textFragment.root?.let { root ->
+            root.findViewById<ImageView>(R.id.icon)?.setImageResource(experimentType.iconId)
+            root.findViewById<TextView>(R.id.text)?.text = buildIntroText()
         }
     }
 
     private fun initText(fragments: MutableList<Fragment>) {
         textFragment = QuestionTextActionButtonFragment()
         textFragment.setLayout(QuestionFragment.Layout(experimentType.iconId, "Daily Check In"))
-        var introText = "We're going to ask you a couple quick questions about your day, then we'll let you know what you should do for your experiment.\n\nYou only need to check in once a day!"
-        sleepNightExplanation?.let { introText += "\n\n$it" }
         textFragment.init(
-            introText,
+            buildIntroText(),
             android.view.View.OnClickListener {
                 val launchIntent = packageManager.getLaunchIntentForPackage("com.google.android.apps.healthdata")
                 if (launchIntent != null) {

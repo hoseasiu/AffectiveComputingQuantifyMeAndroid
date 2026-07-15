@@ -12,7 +12,6 @@ import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.ExperimentType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -22,18 +21,35 @@ class ExperimentCompleteActivity : PermissionCheckingAppCompatActivity() {
     lateinit var repository: ExperimentRepository
 
     private var experiment: ExperimentEntity? = null
+    private var isLoading = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // No setContentView() call yet: the Room read happens off the main thread below, and the
+        // window simply shows its themed background (the existing "invalid state" behavior below
+        // was already to leave the window without content) until the result is ready to render.
         val experimentId = intent.getIntExtra(EXPERIMENT_ID_EXTRA, -1)
-        experiment = runBlocking {
-            if (experimentId != -1) repository.getExperimentById(experimentId).first()
-            else repository.getLatestExperiment().first()
-        }
+        lifecycleScope.launch {
+            experiment = if (experimentId != -1) repository.getExperimentById(experimentId).first()
+                else repository.getLatestExperiment().first()
 
+            isLoading = false
+            renderIfValid()
+        }
+    }
+
+    /**
+     * Renders the result screen if we have a completed experiment, otherwise redirects away.
+     * Runs once the async load (in onCreate) completes, and mirrors what onResume() used to do
+     * synchronously right after onCreate.
+     */
+    private fun renderIfValid() {
         val current = experiment
         if (current == null || current.isActive || current.resultValue == null) {
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+            overridePendingTransition(0, 0)
             return
         }
 
@@ -62,6 +78,11 @@ class ExperimentCompleteActivity : PermissionCheckingAppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+
+        if (isLoading) {
+            // Validity is checked in the load callback (onCreate) once data is available.
+            return
+        }
 
         val current = experiment
         if (current == null || current.isActive || current.resultValue == null) {
