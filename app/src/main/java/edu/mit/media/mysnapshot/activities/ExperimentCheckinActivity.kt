@@ -152,12 +152,21 @@ class ExperimentCheckinActivity : QuestionActivity() {
     }
 
     /**
-     * Patches the already-inflated intro fragment view with the real experiment icon/text once
-     * the async load (in onCreate) resolves. QuestionActivity doesn't expose its ViewPager/adapter
-     * fields for a full fragment rebuild, so we update the rendered views directly instead.
+     * Patches the intro fragment view with the real experiment icon/text once the async load
+     * (in onCreate) resolves. QuestionActivity doesn't expose its ViewPager/adapter fields for a
+     * full fragment rebuild, so we update the rendered views directly instead.
+     *
+     * We observe viewLifecycleOwnerLiveData rather than reading `root` once: the Room read
+     * frequently resumes (a normal main-thread message) before the ViewPager's first layout pass
+     * inflates page 0 (which waits for the next Choreographer vsync), so `root` is often still null
+     * at this point. The LiveData emits the current viewLifecycleOwner immediately if the view
+     * already exists, and again whenever a new view is created -- handling both orderings
+     * (data-first and view-first) and surviving view recreation, so the sleep-night explanation and
+     * icon always land.
      */
     private fun applyLoadedExperimentData() {
-        textFragment.root?.let { root ->
+        textFragment.viewLifecycleOwnerLiveData.observe(this) {
+            val root = textFragment.root ?: return@observe
             root.findViewById<ImageView>(R.id.icon)?.setImageResource(experimentType.iconId)
             root.findViewById<TextView>(R.id.text)?.text = buildIntroText()
         }
