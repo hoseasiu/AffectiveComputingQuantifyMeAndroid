@@ -144,6 +144,4 @@ dependencies {
 
     // Health Connect (Phase 3 replacement for the dead Jawbone UP SDK)
     implementation 'androidx.health.connect:connect-client:1.1.0-alpha07'
-
-    implementation 'ch.acra:acra-http:5.11.3'
 }
