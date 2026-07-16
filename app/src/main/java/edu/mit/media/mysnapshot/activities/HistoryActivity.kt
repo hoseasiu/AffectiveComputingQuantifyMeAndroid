@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,10 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.data.ExperimentExporter
-import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.ExperimentType
 import edu.mit.media.mysnapshot.ui.theme.DayCountGrey
@@ -53,45 +53,38 @@ import edu.mit.media.mysnapshot.ui.theme.FadeBlue
 import edu.mit.media.mysnapshot.ui.theme.FadeRed
 import edu.mit.media.mysnapshot.ui.theme.PageIndicatorDisabled
 import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+import edu.mit.media.mysnapshot.viewmodel.HistoryEvent
+import edu.mit.media.mysnapshot.viewmodel.HistoryViewModel
 import org.joda.time.DateTime
 import org.joda.time.Days
 import org.joda.time.LocalDate
 import java.io.File
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class HistoryActivity : ComponentActivity() {
 
-    @Inject
-    lateinit var repository: ExperimentRepository
+    private val viewModel: HistoryViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             QuantifyMeTheme {
-                val experiments by repository.getAllExperiments().collectAsStateWithLifecycle(initialValue = null)
-                var isCancelling by remember { mutableStateOf(false) }
+                val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-                HistoryScreen(
-                    experiments = experiments,
-                    isBusy = isCancelling,
-                    onCancelConfirmed = { experiment ->
-                        isCancelling = true
-                        lifecycleScope.launch {
-                            repository.cancelExperiment(experiment.id)
-                            isCancelling = false
-                        }
-                    },
-                    onExport = { experiment ->
-                        lifecycleScope.launch {
-                            val checkins = repository.getCheckinsForExperiment(experiment.id).first()
-                            val json = ExperimentExporter.buildExportJson(experiment, checkins)
-                            shareExportJson(experiment, json)
+                LaunchedEffect(Unit) {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            is HistoryEvent.ExportReady -> shareExportJson(event.experiment, event.json)
                         }
                     }
+                }
+
+                HistoryScreen(
+                    experiments = state.experiments,
+                    isBusy = state.isCancelling,
+                    onCancelConfirmed = viewModel::cancelExperiment,
+                    onExport = viewModel::exportExperiment
                 )
             }
         }
