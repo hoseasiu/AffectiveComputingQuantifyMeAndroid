@@ -17,6 +17,11 @@ val Yellow = Color(0xFFFFDE9B)
 val DarkPurple = Color(0xFF8061A1)
 val FadeGreen = Color(0xFFC5D1C6)
 
+// Mirrors colors.xml's `radio_red`/`radio_green` (== AccentRed / #9fd2a7), the default
+// left/right endpoints ColoredRadioGroup lerps its 7 scale-button colors between.
+val RadioRed = AccentRed
+val RadioGreen = Color(0xFF9FD2A7)
+
 // Dark-mode color scheme tokens. AccentRed (the light-scheme primary) is already a light,
 // pastel coral with plenty of luminance, so it's reused as-is for the dark primary per M3
 // guidance (dark themes want higher-tone/lighter primaries against dark surfaces); the
