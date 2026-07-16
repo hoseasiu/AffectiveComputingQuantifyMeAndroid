@@ -1,292 +1,154 @@
 package edu.mit.media.mysnapshot.activities
 
-import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.widget.ImageView
-import android.widget.TextView
-import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.R
-import edu.mit.media.mysnapshot.activities.questions.QuestionActivity
-import edu.mit.media.mysnapshot.activities.questions.QuestionListener
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionFragment
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionRadioGroupFragment
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionSpinnerFragment
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionTextActionButtonFragment
-import edu.mit.media.mysnapshot.data.ExperimentRepository
-import edu.mit.media.mysnapshot.database.ExperimentEntity
-import edu.mit.media.mysnapshot.engine.ExperimentType
-import edu.mit.media.mysnapshot.health.HealthConnectManager
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import javax.inject.Inject
+import edu.mit.media.mysnapshot.ui.theme.FadeBlue
+import edu.mit.media.mysnapshot.ui.theme.PageIndicatorDisabled
+import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
+import edu.mit.media.mysnapshot.ui.theme.RadioGreen
+import edu.mit.media.mysnapshot.ui.theme.RadioRed
+import edu.mit.media.mysnapshot.ui.theme.White
+import edu.mit.media.mysnapshot.viewmodel.CheckinEvent
+import edu.mit.media.mysnapshot.viewmodel.CheckinStep
+import edu.mit.media.mysnapshot.viewmodel.CheckinUiState
+import edu.mit.media.mysnapshot.viewmodel.CheckinViewModel
 
+/**
+ * The daily check-in (AGENT_PLANS/IMPROVEMENTS.md 3.1): a 6-step progressive-reveal wizard,
+ * now Compose + [CheckinViewModel] instead of the legacy `QuestionActivity`/`ViewPager` +
+ * `QuestionRadioGroupFragment`/`QuestionSpinnerFragment`. Behavior and data semantics are
+ * preserved exactly -- see the ViewModel's doc comments for how each legacy quirk (0-based
+ * scale indices, the reveal-frontier auto-advance, the stress-scale color inversion) was
+ * ported. All Room/Health Connect/repository I/O happens in `viewModelScope`; this Activity
+ * only renders state and performs the one-shot Intent side effects the ViewModel can't
+ * (opening Health Connect, navigating away).
+ */
 @AndroidEntryPoint
-class ExperimentCheckinActivity : QuestionActivity() {
+class ExperimentCheckinActivity : ComponentActivity() {
 
-    @Inject
-    lateinit var repository: ExperimentRepository
-
-    @Inject
-    lateinit var healthConnect: HealthConnectManager
-
-    private var experiment: ExperimentEntity? = null
-
-    // Placeholder until the async load (below) resolves the real experiment/type. initFragments()
-    // (called synchronously from QuestionActivity's onCreate) needs *some* value to build the intro
-    // fragment with, so we start with a harmless default and patch the rendered view in place once
-    // the real data arrives -- see applyLoadedExperimentData().
-    private var experimentType: ExperimentType = ExperimentType.fromTypeKey("leisurehappiness")
-    private var sleepNightExplanation: String? = null
-    private var isLoadingExperiment = true
-
-    private lateinit var textFragment: QuestionTextActionButtonFragment
-    private lateinit var didFollowDirections: QuestionRadioGroupFragment
-    private lateinit var happy: QuestionRadioGroupFragment
-    private lateinit var stress: QuestionRadioGroupFragment
-    private lateinit var productivity: QuestionRadioGroupFragment
-    private lateinit var leisure: QuestionSpinnerFragment
+    private val viewModel: CheckinViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // QuestionActivity.onCreate() synchronously builds the ViewPager/fragments (initFragments()
-        // is called from within it), so it must run before we know the real experiment data. The
-        // fragments are built with placeholder content below and patched once loading completes.
         super.onCreate(savedInstanceState)
 
         val experimentId = intent.getIntExtra(EXPERIMENT_ID_EXTRA, -1)
-        lifecycleScope.launch {
-            val loadedExperiment = if (experimentId != -1) repository.getExperimentById(experimentId).first()
-                else repository.getLatestExperiment().first()
+        viewModel.load(experimentId)
 
-            experiment = loadedExperiment
-            experimentType = loadedExperiment?.let { ExperimentType.fromTypeKey(it.type) } ?: ExperimentType.fromTypeKey("leisurehappiness")
+        setContent {
+            QuantifyMeTheme {
+                val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-            if (experimentType.usesSleepData) {
-                sleepNightExplanation = buildSleepNightExplanation()
-            }
+                LaunchedEffect(Unit) {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            CheckinEvent.OpenHealthConnect -> openHealthConnect()
+                            CheckinEvent.NavigateToMain ->
+                                navigateAndFinish(Intent(this@ExperimentCheckinActivity, MainActivity::class.java))
+                            is CheckinEvent.NavigateToComplete -> {
+                                ExperimentCompleteActivity.startActivity(this@ExperimentCheckinActivity, event.experimentId)
+                                finish()
+                                overridePendingTransition(0, 0)
+                            }
+                            is CheckinEvent.NavigateToInstructions -> {
+                                ExperimentInstructionsActivity.startActivityAfterCheckin(
+                                    this@ExperimentCheckinActivity, event.experimentId, event.outcome
+                                )
+                                finish()
+                                overridePendingTransition(0, 0)
+                            }
+                        }
+                    }
+                }
 
-            isLoadingExperiment = false
-
-            // Mirrors the validity checks onResume() performs once data is available; if we
-            // navigate away there's no point patching the (about to be destroyed) fragment view.
-            if (checkExperimentValidity()) {
-                applyLoadedExperimentData()
+                CheckinScreen(
+                    state = state,
+                    onOpenHealthConnect = viewModel::onOpenHealthConnect,
+                    onIntroContinue = viewModel::onIntroContinue,
+                    onDidFollowDirectionsSelected = viewModel::onDidFollowDirectionsSelected,
+                    onLeisureSelected = viewModel::onLeisureSelected,
+                    onHappySelected = viewModel::onHappySelected,
+                    onStressSelected = viewModel::onStressSelected,
+                    onProductivitySelected = viewModel::onProductivitySelected,
+                    onDotClick = viewModel::goToStep
+                )
             }
         }
-    }
-
-    /**
-     * Paper §6.3: participants didn't understand what counted as "a night" when they
-     * slept past midnight. Health Connect gives explicit session start/end, so surface
-     * it directly instead of leaving the day-boundary silently inferred.
-     */
-    private suspend fun buildSleepNightExplanation(): String? {
-        val session = healthConnect.getMostRecentSleepSession() ?: return null
-        val zone = ZoneId.systemDefault()
-        val timeFormat = DateTimeFormatter.ofPattern("h:mm a")
-        val start = session.startTime.atZone(zone)
-        val end = session.endTime.atZone(zone)
-        val night = session.attributedNight.toString("EEEE, MMM d")
-        return "We counted your sleep from ${start.format(timeFormat)} to ${end.format(timeFormat)} " +
-            "as the night of $night (a night belongs to the day you woke up, not the day you fell asleep)."
-    }
-
-    override fun getLayoutId(): Int = R.layout.activity_experiment_config
-
-    override fun initFragments(fragments: MutableList<Fragment>, icons: MutableList<Drawable>) {
-        // Built eagerly (with placeholder experiment data where needed) so the ViewPager has its
-        // full page set from the start; only the intro fragment's content depends on the real
-        // experiment/type, which is patched in once the async load completes.
-        initText(fragments)
-        initDidFollowDirections(fragments)
-        initLeisure(fragments)
-        initHappy(fragments)
-        initStress(fragments)
-        initProductivity(fragments)
     }
 
     override fun onResume() {
         super.onResume()
-
-        if (isLoadingExperiment) {
-            // Validity is checked in the load callback (onCreate) once data is available.
-            return
-        }
-
-        checkExperimentValidity()
+        // Mirrors the legacy per-resume validity re-check (redirect away if the experiment
+        // was completed/cancelled elsewhere while this screen was backgrounded).
+        viewModel.onResume()
     }
 
-    /**
-     * Redirects away if there's no current experiment, or the current one is no longer active.
-     * Returns true if the check-in screen should keep showing.
-     */
-    private fun checkExperimentValidity(): Boolean {
-        val current = experiment
-        if (current == null) {
-            startActivity(Intent(this, MainActivity::class.java))
-            finish()
-            overridePendingTransition(0, 0)
-            return false
-        }
-
-        if (!current.isActive) {
-            ExperimentCompleteActivity.startActivity(this, current.id)
-            finish()
-            overridePendingTransition(0, 0)
-            return false
-        }
-
-        return true
-    }
-
-    private fun buildIntroText(): String {
-        var introText = "We're going to ask you a couple quick questions about your day, then we'll let you know what you should do for your experiment.\n\nYou only need to check in once a day!"
-        sleepNightExplanation?.let { introText += "\n\n$it" }
-        return introText
-    }
-
-    /**
-     * Patches the intro fragment view with the real experiment icon/text once the async load
-     * (in onCreate) resolves. QuestionActivity doesn't expose its ViewPager/adapter fields for a
-     * full fragment rebuild, so we update the rendered views directly instead.
-     *
-     * We observe viewLifecycleOwnerLiveData rather than reading `root` once: the Room read
-     * frequently resumes (a normal main-thread message) before the ViewPager's first layout pass
-     * inflates page 0 (which waits for the next Choreographer vsync), so `root` is often still null
-     * at this point. The LiveData emits the current viewLifecycleOwner immediately if the view
-     * already exists, and again whenever a new view is created -- handling both orderings
-     * (data-first and view-first) and surviving view recreation, so the sleep-night explanation and
-     * icon always land.
-     */
-    private fun applyLoadedExperimentData() {
-        textFragment.viewLifecycleOwnerLiveData.observe(this) {
-            val root = textFragment.root ?: return@observe
-            root.findViewById<ImageView>(R.id.icon)?.setImageResource(experimentType.iconId)
-            root.findViewById<TextView>(R.id.text)?.text = buildIntroText()
+    private fun openHealthConnect() {
+        val launchIntent = packageManager.getLaunchIntentForPackage("com.google.android.apps.healthdata")
+        if (launchIntent != null) {
+            startActivity(launchIntent)
         }
     }
 
-    private fun initText(fragments: MutableList<Fragment>) {
-        textFragment = QuestionTextActionButtonFragment()
-        textFragment.setLayout(QuestionFragment.Layout(experimentType.iconId, "Daily Check In"))
-        textFragment.init(
-            buildIntroText(),
-            android.view.View.OnClickListener {
-                val launchIntent = packageManager.getLaunchIntentForPackage("com.google.android.apps.healthdata")
-                if (launchIntent != null) {
-                    startActivity(launchIntent)
-                }
-            }
-        )
-        textFragment.setListener(object : QuestionListener<Int>() {
-            override fun onSelected(value: Int) {
-                onPageComplete(true)
-            }
-        })
-        fragments.add(textFragment)
-    }
-
-    private fun initDidFollowDirections(fragments: MutableList<Fragment>) {
-        didFollowDirections = QuestionRadioGroupFragment()
-        didFollowDirections.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_self_effectiveness, "How did you do with following the experiment's instructions?"))
-        didFollowDirections.init("Poor", "Great")
-        didFollowDirections.setListener(object : QuestionListener<Int>() {
-            override fun onSelected(value: Int) {
-                onPageComplete()
-            }
-        })
-        fragments.add(didFollowDirections)
-    }
-
-    private fun initProductivity(fragments: MutableList<Fragment>) {
-        productivity = QuestionRadioGroupFragment()
-        productivity.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_productivity, "How productive were you in the past 24 hours?"))
-        productivity.init("Not at all", "Extremely")
-        productivity.setListener(object : QuestionListener<Int>() {
-            override fun onSelected(value: Int) {
-                onPageComplete()
-            }
-        })
-        fragments.add(productivity)
-    }
-
-    private fun initStress(fragments: MutableList<Fragment>) {
-        stress = QuestionRadioGroupFragment()
-        stress.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_stress, "How stressed were you in the past 24 hours?"))
-        stress.init("Not at all", "Extremely", resources.getColor(R.color.radio_green), resources.getColor(R.color.radio_red), 7)
-        stress.setListener(object : QuestionListener<Int>() {
-            override fun onSelected(value: Int) {
-                onPageComplete()
-            }
-        })
-        fragments.add(stress)
-    }
-
-    private fun initHappy(fragments: MutableList<Fragment>) {
-        happy = QuestionRadioGroupFragment()
-        happy.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_happiness, "How happy were you in the past 24 hours?"))
-        happy.init("Not at all", "Extremely")
-        happy.setListener(object : QuestionListener<Int>() {
-            override fun onSelected(value: Int) {
-                onPageComplete()
-            }
-        })
-        fragments.add(happy)
-    }
-
-    private fun initLeisure(fragments: MutableList<Fragment>) {
-        leisure = QuestionSpinnerFragment()
-        leisure.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_leisure, "How much leisure time did you have in the past 24 hours?"))
-        leisure.init(R.array.leisurevalues, R.array.leisurelabels, "Please Select an Option")
-        leisure.setListener(object : QuestionListener<String>() {
-            override fun onSelected(value: String) {
-                onPageComplete()
-            }
-        })
-        fragments.add(leisure)
-    }
-
-    override fun loadInitialData(): Boolean = false
-
-    override fun onFinish() {
-        val current = experiment ?: return
-
-        val dialog = ProgressDialog(this)
-        dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER)
-        dialog.setTitle("Generating daily instructions...")
-        dialog.setCancelable(false)
-        dialog.setIcon(android.R.drawable.ic_menu_upload)
-        dialog.show()
-
-        lifecycleScope.launch {
-            val outcome = repository.submitCheckin(
-                experimentId = current.id,
-                didFollowInstructions = didFollowDirections.value,
-                happiness = happy.value,
-                stress = stress.value,
-                productivity = productivity.value,
-                leisureTime = leisure.value.toInt()
-            )
-
-            dialog.dismiss()
-
-            if (outcome.isComplete) {
-                ExperimentCompleteActivity.startActivity(this@ExperimentCheckinActivity, current.id)
-            } else {
-                ExperimentInstructionsActivity.startActivityAfterCheckin(
-                    this@ExperimentCheckinActivity, current.id, outcome
-                )
-            }
-
-            finish()
-            overridePendingTransition(0, 0)
-        }
+    private fun navigateAndFinish(intent: Intent) {
+        startActivity(intent)
+        finish()
+        overridePendingTransition(0, 0)
     }
 
     companion object {
@@ -298,6 +160,433 @@ class ExperimentCheckinActivity : QuestionActivity() {
             val intent = Intent(context, ExperimentCheckinActivity::class.java)
             intent.putExtra(EXPERIMENT_ID_EXTRA, experimentId)
             context.startActivity(intent)
+        }
+    }
+}
+
+private const val TOTAL_STEPS = 6
+
+@Composable
+private fun CheckinScreen(
+    state: CheckinUiState,
+    onOpenHealthConnect: () -> Unit,
+    onIntroContinue: () -> Unit,
+    onDidFollowDirectionsSelected: (Int) -> Unit,
+    onLeisureSelected: (String) -> Unit,
+    onHappySelected: (Int) -> Unit,
+    onStressSelected: (Int) -> Unit,
+    onProductivitySelected: (Int) -> Unit,
+    onDotClick: (Int) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(FadeBlue)
+    ) {
+        if (state.isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            return@Box
+        }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            StepDotsIndicator(
+                currentStep = state.currentStep,
+                revealedSteps = state.revealedSteps,
+                totalSteps = TOTAL_STEPS,
+                onDotClick = onDotClick
+            )
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (CheckinStep.entries[state.currentStep]) {
+                    CheckinStep.INTRO -> IntroStep(
+                        icon = state.experimentType.iconId,
+                        body = state.introText,
+                        onOpenHealthConnect = onOpenHealthConnect,
+                        onContinue = onIntroContinue
+                    )
+                    CheckinStep.DID_FOLLOW_DIRECTIONS -> RadioScaleStep(
+                        icon = R.drawable.icon_settings_self_effectiveness,
+                        question = "How did you do with following the experiment's instructions?",
+                        leftLabel = "Poor",
+                        rightLabel = "Great",
+                        leftColor = RadioRed,
+                        rightColor = RadioGreen,
+                        selected = state.didFollowDirections,
+                        onSelect = onDidFollowDirectionsSelected
+                    )
+                    CheckinStep.LEISURE -> LeisureStep(
+                        icon = R.drawable.icon_settings_leisure,
+                        question = "How much leisure time did you have in the past 24 hours?",
+                        selected = state.leisureValue,
+                        onSelect = onLeisureSelected
+                    )
+                    CheckinStep.HAPPY -> RadioScaleStep(
+                        icon = R.drawable.icon_settings_happiness,
+                        question = "How happy were you in the past 24 hours?",
+                        leftLabel = "Not at all",
+                        rightLabel = "Extremely",
+                        leftColor = RadioRed,
+                        rightColor = RadioGreen,
+                        selected = state.happiness,
+                        onSelect = onHappySelected
+                    )
+                    CheckinStep.STRESS -> RadioScaleStep(
+                        icon = R.drawable.icon_settings_stress,
+                        question = "How stressed were you in the past 24 hours?",
+                        leftLabel = "Not at all",
+                        rightLabel = "Extremely",
+                        // Inverted vs. the other three scales: low stress reads as "good" (green),
+                        // matching the legacy `stress.init(..., radio_green, radio_red, 7)` call.
+                        leftColor = RadioGreen,
+                        rightColor = RadioRed,
+                        selected = state.stress,
+                        onSelect = onStressSelected
+                    )
+                    CheckinStep.PRODUCTIVITY -> RadioScaleStep(
+                        icon = R.drawable.icon_settings_productivity,
+                        question = "How productive were you in the past 24 hours?",
+                        leftLabel = "Not at all",
+                        rightLabel = "Extremely",
+                        leftColor = RadioRed,
+                        rightColor = RadioGreen,
+                        selected = state.productivity,
+                        onSelect = onProductivitySelected
+                    )
+                }
+            }
+        }
+
+        if (state.isSubmitting) {
+            SubmittingOverlay()
+        }
+    }
+}
+
+@Composable
+private fun SubmittingOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.4f))
+            .semantics { contentDescription = "Generating daily instructions" },
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), color = White) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Generating daily instructions...")
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepDotsIndicator(
+    currentStep: Int,
+    revealedSteps: Int,
+    totalSteps: Int,
+    onDotClick: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        for (i in 0 until totalSteps) {
+            val revealed = i < revealedSteps
+            val isCurrent = i == currentStep
+            val description = "Step ${i + 1} of $totalSteps" + when {
+                isCurrent -> ", current step"
+                !revealed -> ", not yet available"
+                else -> ""
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .then(
+                        if (revealed) {
+                            Modifier.clickable(onClickLabel = description) { onDotClick(i) }
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .semantics { contentDescription = description },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(if (isCurrent) 14.dp else 10.dp)
+                        .clip(CircleShape)
+                        .background(
+                            when {
+                                isCurrent -> MaterialTheme.colorScheme.primary
+                                revealed -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                else -> PageIndicatorDisabled
+                            }
+                        )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun IntroStep(
+    icon: Int,
+    body: String,
+    onOpenHealthConnect: () -> Unit,
+    onContinue: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier
+                .size(80.dp)
+                .padding(bottom = 16.dp)
+        )
+        Text(
+            text = "Daily Check In",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .semantics { heading() }
+                .padding(bottom = 16.dp)
+        )
+        Text(
+            text = body,
+            fontSize = 16.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+        Button(
+            onClick = onOpenHealthConnect,
+            modifier = Modifier
+                .defaultMinSize(minHeight = 48.dp)
+                .semantics { contentDescription = "Open the Health Connect app" }
+        ) {
+            Text("Open Health Connect")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onContinue,
+            modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+        ) {
+            Text("Continue")
+        }
+    }
+}
+
+@Composable
+private fun RadioScaleStep(
+    icon: Int,
+    question: String,
+    leftLabel: String,
+    rightLabel: String,
+    leftColor: Color,
+    rightColor: Color,
+    selected: Int?,
+    onSelect: (Int) -> Unit
+) {
+    val scaleSize = 7
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = 16.dp)
+        )
+        Text(
+            text = question,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .semantics { heading() }
+                .padding(bottom = 24.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectableGroup(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            for (i in 0 until scaleSize) {
+                ScaleButton(
+                    color = scaleButtonColor(i, scaleSize, leftColor, rightColor),
+                    selected = selected == i,
+                    description = "$question Option ${i + 1} of $scaleSize" +
+                        when (i) {
+                            0 -> ", $leftLabel"
+                            scaleSize - 1 -> ", $rightLabel"
+                            else -> ""
+                        },
+                    onClick = { onSelect(i) }
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = leftLabel, fontSize = 14.sp)
+            Text(text = rightLabel, fontSize = 14.sp)
+        }
+    }
+}
+
+/**
+ * A single scale button. `size(48.dp)` satisfies the 7.1 accessibility touch-target minimum;
+ * `selectable(role = Role.RadioButton)` gives TalkBack the standard "radio button, selected/not
+ * selected" announcement, layered with an explicit position-in-set [description] (the scale
+ * has no visible numeric labels otherwise).
+ */
+@Composable
+private fun ScaleButton(
+    color: Color,
+    selected: Boolean,
+    description: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(color)
+            .then(
+                if (selected) {
+                    Modifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f), CircleShape)
+                } else {
+                    Modifier
+                }
+            )
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.RadioButton
+            )
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center
+    ) {
+        if (selected) {
+            Text(text = "✓", color = White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        }
+    }
+}
+
+/**
+ * Direct port of `ColoredRadioGroup.getColor()`'s linear interpolation (`lerp(i, total, ...)`,
+ * i.e. `start + (finish - start) * i / total` -- note this is `i / total`, not `i / (total-1)`,
+ * so the rightmost button never quite reaches the pure [rightColor], exactly matching the
+ * legacy widget's math).
+ */
+private fun scaleButtonColor(index: Int, total: Int, leftColor: Color, rightColor: Color): Color {
+    val fraction = index / total.toFloat()
+    return Color(
+        red = leftColor.red + (rightColor.red - leftColor.red) * fraction,
+        green = leftColor.green + (rightColor.green - leftColor.green) * fraction,
+        blue = leftColor.blue + (rightColor.blue - leftColor.blue) * fraction,
+        alpha = 1f
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LeisureStep(
+    icon: Int,
+    question: String,
+    selected: String?,
+    onSelect: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val labels = stringArrayResource(R.array.leisurelabels)
+    val values = stringArrayResource(R.array.leisurevalues)
+    val selectedLabel = selected
+        ?.let { value -> values.indexOf(value).takeIf { it >= 0 } }
+        ?.let { labels[it] }
+        ?: ""
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = 16.dp)
+        )
+        Text(
+            text = question,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .semantics { heading() }
+                .padding(bottom = 24.dp)
+        )
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = selectedLabel,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Please Select an Option") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "$question. Please Select an Option. Currently $selectedLabel" }
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                labels.forEachIndexed { i, label ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = {
+                            expanded = false
+                            onSelect(values[i])
+                        }
+                    )
+                }
+            }
         }
     }
 }
