@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,25 +20,21 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.engine.ExperimentType
 import edu.mit.media.mysnapshot.ui.theme.FadeBlue
 import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
 import edu.mit.media.mysnapshot.ui.theme.White
-import kotlinx.coroutines.flow.first
+import edu.mit.media.mysnapshot.viewmodel.ExperimentProgressViewModel
 import org.joda.time.LocalDate
 import org.joda.time.format.DateTimeFormat
-import javax.inject.Inject
 
 /**
  * Opt-in mid-experiment progress view (AGENT_PLANS/MODERNIZE.md Phase 5.1, paper §6.2):
@@ -48,26 +45,19 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class ExperimentProgressActivity : ComponentActivity() {
 
-    @Inject
-    lateinit var repository: ExperimentRepository
+    private val viewModel: ExperimentProgressViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val experimentId = intent.getIntExtra(EXPERIMENT_ID_EXTRA, -1)
+        viewModel.load(experimentId)
 
         setContent {
             QuantifyMeTheme {
-                var experimentType by remember { mutableStateOf<ExperimentType?>(null) }
-                var stages by remember { mutableStateOf<List<ExperimentRepository.StageProgress>?>(null) }
+                val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-                LaunchedEffect(experimentId) {
-                    val experiment = repository.getExperimentById(experimentId).first()
-                    experimentType = experiment?.let { ExperimentType.fromTypeKey(it.type) }
-                    stages = repository.getProgressSummary(experimentId)
-                }
-
-                ProgressScreen(experimentType, stages)
+                ProgressScreen(state.experimentType, state.stages)
             }
         }
     }

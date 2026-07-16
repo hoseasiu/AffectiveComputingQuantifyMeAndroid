@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -27,31 +29,39 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.R
-import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.engine.ExperimentType
 import edu.mit.media.mysnapshot.ui.theme.DarkBlue
 import edu.mit.media.mysnapshot.ui.theme.FadeBlue
 import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
 import edu.mit.media.mysnapshot.ui.theme.White
 import edu.mit.media.mysnapshot.ui.theme.rememberQuantifyMeFonts
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import javax.inject.Inject
+import edu.mit.media.mysnapshot.viewmodel.ExperimentChooseEvent
+import edu.mit.media.mysnapshot.viewmodel.ExperimentChooseViewModel
 
 @AndroidEntryPoint
 class ExperimentChooseActivity : ComponentActivity() {
 
-    @Inject
-    lateinit var repository: ExperimentRepository
+    private val viewModel: ExperimentChooseViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             QuantifyMeTheme {
+                LaunchedEffect(Unit) {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            ExperimentChooseEvent.NavigateToMain -> {
+                                startActivity(Intent(this@ExperimentChooseActivity, MainActivity::class.java))
+                                finish()
+                                overridePendingTransition(0, 0)
+                            }
+                        }
+                    }
+                }
+
                 ExperimentChooseScreen(
                     onExperimentTypeSelected = { type ->
                         ExperimentIntroActivity.startActivity(this, type)
@@ -63,15 +73,7 @@ class ExperimentChooseActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-
-        lifecycleScope.launch {
-            val experiment = repository.getLatestExperiment().first()
-            if (experiment != null && !experiment.isCancelled) {
-                startActivity(Intent(this@ExperimentChooseActivity, MainActivity::class.java))
-                finish()
-                overridePendingTransition(0, 0)
-            }
-        }
+        viewModel.checkForExistingExperiment()
     }
 
     companion object {
