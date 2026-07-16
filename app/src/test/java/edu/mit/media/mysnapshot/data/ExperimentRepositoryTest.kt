@@ -6,6 +6,8 @@ import edu.mit.media.mysnapshot.database.CheckinEntity
 import edu.mit.media.mysnapshot.database.QuantifyMeDatabase
 import edu.mit.media.mysnapshot.engine.ExperimentEngine
 import edu.mit.media.mysnapshot.engine.ExperimentType
+import edu.mit.media.mysnapshot.engine.ExperimentTypeRegistry
+import edu.mit.media.mysnapshot.engine.readBundledExperimentTypesJson
 import edu.mit.media.mysnapshot.health.HealthConnectManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -29,7 +31,7 @@ import org.robolectric.annotation.Config
  * port" with zero prior tests.
  *
  * IMPORTANT / merge-risk note: this file is intentionally scoped to
- * [ExperimentType.LeisureHappiness] only, whose `getInputs`/`getOutputs` are 100%
+ * [ExperimentType.fromTypeKey("leisurehappiness")] only, whose `getInputs`/`getOutputs` are 100%
  * checkin-backed (see `ExperimentDataProvider.kt`) and never call [HealthConnectManager].
  * That sidesteps two problems at once:
  *   1. `HealthConnectManager` is a concrete (non-open) Hilt-injected class wrapping a real
@@ -61,6 +63,11 @@ class ExperimentRepositoryTest {
 
     @Before
     fun setUp() {
+        // Phase 5.4 made ExperimentType.fromTypeKey read the JSON-config-backed registry, which
+        // MyApplication.onCreate normally populates. Seed it from the bundled asset for these
+        // plain-JUnit/Robolectric tests via the registry's test-only, Context-free seam.
+        ExperimentTypeRegistry.loadForTest(readBundledExperimentTypesJson())
+
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         db = Room.inMemoryDatabaseBuilder(context, QuantifyMeDatabase::class.java)
             .allowMainThreadQueries()
@@ -96,7 +103,7 @@ class ExperimentRepositoryTest {
 
     @Test
     fun createExperiment_insertsActiveExperimentInBaselineStage() = runBlocking {
-        val id = repository.createExperiment(ExperimentType.LeisureHappiness, 3, 4, 5).toInt()
+        val id = repository.createExperiment(ExperimentType.fromTypeKey("leisurehappiness"), 3, 4, 5).toInt()
 
         val entity = db.experimentDao().getById(id).first()!!
         assertEquals("leisurehappiness", entity.type)
@@ -115,7 +122,7 @@ class ExperimentRepositoryTest {
 
     @Test
     fun submitCheckin_onCreationDay_recordsCheckinAndStaysInBaseline() = runBlocking {
-        val id = repository.createExperiment(ExperimentType.LeisureHappiness, 3, 3, 3).toInt()
+        val id = repository.createExperiment(ExperimentType.fromTypeKey("leisurehappiness"), 3, 3, 3).toInt()
 
         val outcome = repository.submitCheckin(
             id, didFollowInstructions = 1, happiness = 5, stress = 2, productivity = 4, leisureTime = 60
@@ -135,7 +142,7 @@ class ExperimentRepositoryTest {
     @Test
     fun submitCheckin_baselineComplete_advancesToStage1WithComputedTargets() = runBlocking {
         val today = LocalDate.now()
-        val id = repository.createExperiment(ExperimentType.LeisureHappiness, 3, 3, 3).toInt()
+        val id = repository.createExperiment(ExperimentType.fromTypeKey("leisurehappiness"), 3, 3, 3).toInt()
 
         // Backdate the baseline stage to have started 7 days ago, so today's check-in is the
         // 7th day and should end it (Experiment.get_stage_dates / should_end_stage: stageDay
@@ -165,7 +172,7 @@ class ExperimentRepositoryTest {
         // Cross-check against the same pure engine function the repository calls, rather
         // than hardcoding the expected target values independently.
         val expectedTargets = ExperimentEngine.setStageTargets(
-            List(7) { 60f }, useVariability = false, ExperimentType.LeisureHappiness.ranges, ExperimentType.LeisureHappiness.rangeSize
+            List(7) { 60f }, useVariability = false, ExperimentType.fromTypeKey("leisurehappiness").ranges, ExperimentType.fromTypeKey("leisurehappiness").rangeSize
         )
 
         assertTrue("a full 7-day baseline must end the stage", outcome.newStage)
@@ -188,7 +195,7 @@ class ExperimentRepositoryTest {
     @Test
     fun submitCheckin_tooManyMissedDaysInStage_restartsSameStageWithoutAdvancing() = runBlocking {
         val today = LocalDate.now()
-        val id = repository.createExperiment(ExperimentType.LeisureHappiness, 3, 3, 3).toInt()
+        val id = repository.createExperiment(ExperimentType.fromTypeKey("leisurehappiness"), 3, 3, 3).toInt()
 
         // Fast-forward straight into stage 1, started 3 days ago, with pre-set targets (as
         // if a baseline had already completed) but *no* check-ins recorded for the two days
@@ -231,7 +238,7 @@ class ExperimentRepositoryTest {
     @Test
     fun refreshInstructions_doesNotRecordACheckinOrMutateExperimentState() = runBlocking {
         val today = LocalDate.now()
-        val id = repository.createExperiment(ExperimentType.LeisureHappiness, 3, 3, 3).toInt()
+        val id = repository.createExperiment(ExperimentType.fromTypeKey("leisurehappiness"), 3, 3, 3).toInt()
         val original = readState(id)
         val advanced = original
             .withStageDates(1, today, today.plusDays(7))
@@ -257,7 +264,7 @@ class ExperimentRepositoryTest {
 
     @Test
     fun cancelExperiment_marksInactiveAndCancelled() = runBlocking {
-        val id = repository.createExperiment(ExperimentType.LeisureHappiness, 3, 3, 3).toInt()
+        val id = repository.createExperiment(ExperimentType.fromTypeKey("leisurehappiness"), 3, 3, 3).toInt()
 
         repository.cancelExperiment(id)
 
@@ -278,7 +285,7 @@ class ExperimentRepositoryTest {
     @Test
     fun getProgressSummary_returnsPerStageDateRangesRestartCountsAndCheckins() = runBlocking {
         val today = LocalDate.now()
-        val id = repository.createExperiment(ExperimentType.LeisureHappiness, 3, 3, 3).toInt()
+        val id = repository.createExperiment(ExperimentType.fromTypeKey("leisurehappiness"), 3, 3, 3).toInt()
 
         val stage1Start = today.minusDays(14)
         val stage1End = today.minusDays(7)
