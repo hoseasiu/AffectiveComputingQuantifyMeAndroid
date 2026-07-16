@@ -120,14 +120,6 @@
             android:label="@string/title_activity_main" >
         </activity>
 
-        <!-- LeakCanary 1.3.1's own manifest predates Android 12's mandatory android:exported
-             requirement; override it here rather than bumping a debug-only dependency whose
-             install() call is already commented out (see MyApplication). -->
-        <activity
-            android:name="com.squareup.leakcanary.internal.DisplayLeakActivity"
-            android:exported="false"
-            tools:node="merge" />
-
         <!-- WorkManager's default on-demand initializer would build a plain (non-Hilt)
              WorkManager instance before MyApplication.onCreate runs; remove it so
              MyApplication's Configuration.Provider (HiltWorkerFactory-backed) is used
