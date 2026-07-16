@@ -1,5 +1,6 @@
 package edu.mit.media.mysnapshot.activities
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -38,9 +40,11 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
+import edu.mit.media.mysnapshot.data.ExperimentExporter
 import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.ExperimentType
@@ -49,10 +53,12 @@ import edu.mit.media.mysnapshot.ui.theme.FadeBlue
 import edu.mit.media.mysnapshot.ui.theme.FadeRed
 import edu.mit.media.mysnapshot.ui.theme.PageIndicatorDisabled
 import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.joda.time.DateTime
 import org.joda.time.Days
 import org.joda.time.LocalDate
+import java.io.File
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -78,10 +84,37 @@ class HistoryActivity : ComponentActivity() {
                             repository.cancelExperiment(experiment.id)
                             isCancelling = false
                         }
+                    },
+                    onExport = { experiment ->
+                        lifecycleScope.launch {
+                            val checkins = repository.getCheckinsForExperiment(experiment.id).first()
+                            val json = ExperimentExporter.buildExportJson(experiment, checkins)
+                            shareExportJson(experiment, json)
+                        }
                     }
                 )
             }
         }
+    }
+
+    /**
+     * User-initiated, one-shot export (AGENT_PLANS/MODERNIZE.md, "Optional: local data
+     * export") -- writes the JSON to a cache-only file and hands it to the system share
+     * sheet via a content:// URI. No network call, no shared/external storage; nothing
+     * fires unless the user taps the export button and then picks a share target.
+     */
+    private fun shareExportJson(experiment: ExperimentEntity, json: String) {
+        val exportsDir = File(cacheDir, "exports").apply { mkdirs() }
+        val file = File(exportsDir, ExperimentExporter.suggestedFileName(experiment))
+        file.writeText(json)
+        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(sendIntent, "Export Experiment Data"))
     }
 
     companion object {
@@ -93,7 +126,8 @@ class HistoryActivity : ComponentActivity() {
 private fun HistoryScreen(
     experiments: List<ExperimentEntity>?,
     isBusy: Boolean,
-    onCancelConfirmed: (ExperimentEntity) -> Unit
+    onCancelConfirmed: (ExperimentEntity) -> Unit,
+    onExport: (ExperimentEntity) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -126,7 +160,7 @@ private fun HistoryScreen(
             }
             else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(experiments, key = { it.id }) { experiment ->
-                    ExperimentCard(experiment, isBusy, onCancelConfirmed)
+                    ExperimentCard(experiment, isBusy, onCancelConfirmed, onExport)
                 }
             }
         }
@@ -137,7 +171,8 @@ private fun HistoryScreen(
 private fun ExperimentCard(
     experiment: ExperimentEntity,
     isBusy: Boolean,
-    onCancelConfirmed: (ExperimentEntity) -> Unit
+    onCancelConfirmed: (ExperimentEntity) -> Unit,
+    onExport: (ExperimentEntity) -> Unit
 ) {
     val experimentType = remember(experiment.type) { ExperimentType.fromTypeKey(experiment.type) }
     var showCancelDialog by remember { mutableStateOf(false) }
@@ -157,29 +192,40 @@ private fun ExperimentCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Row {
-                Image(
-                    painter = painterResource(experimentType.iconId),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(70.dp)
-                        .padding(end = 20.dp)
-                )
-                Column {
-                    Text(text = experimentType.name, fontSize = 18.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(modifier = Modifier.weight(1f)) {
+                    Image(
+                        painter = painterResource(experimentType.iconId),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(70.dp)
+                            .padding(end = 20.dp)
+                    )
+                    Column {
+                        Text(text = experimentType.name, fontSize = 18.sp)
 
-                    val days = Days.daysBetween(
-                        LocalDate(experiment.startTime),
-                        LocalDate(experiment.endTime ?: DateTime.now())
-                    ).days
-                    val dayCountText = "$days Days" +
-                        (if (experiment.isCancelled) " (Canceled)" else "") +
-                        (if (experiment.isActive) " (Active)" else "")
-                    Text(
-                        text = dayCountText,
-                        fontSize = 16.sp,
-                        color = DayCountGrey,
-                        modifier = Modifier.padding(top = 7.dp)
+                        val days = Days.daysBetween(
+                            LocalDate(experiment.startTime),
+                            LocalDate(experiment.endTime ?: DateTime.now())
+                        ).days
+                        val dayCountText = "$days Days" +
+                            (if (experiment.isCancelled) " (Canceled)" else "") +
+                            (if (experiment.isActive) " (Active)" else "")
+                        Text(
+                            text = dayCountText,
+                            fontSize = 16.sp,
+                            color = DayCountGrey,
+                            modifier = Modifier.padding(top = 7.dp)
+                        )
+                    }
+                }
+                IconButton(onClick = { onExport(experiment) }) {
+                    Image(
+                        painter = painterResource(android.R.drawable.ic_menu_share),
+                        contentDescription = "Export this experiment's data"
                     )
                 }
             }

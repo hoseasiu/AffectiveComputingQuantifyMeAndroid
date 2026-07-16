@@ -52,7 +52,8 @@ class ExperimentCheckinActivity : QuestionActivity() {
             if (experimentId != -1) repository.getExperimentById(experimentId).first()
             else repository.getLatestExperiment().first()
         }
-        experimentType = experiment?.let { ExperimentType.fromTypeKey(it.type) } ?: ExperimentType.LeisureHappiness
+        experimentType = experiment?.let { ExperimentType.fromTypeKey(it.type) }
+            ?: ExperimentType.fromTypeKey("leisurehappiness")
 
         if (experimentType.usesSleepData) {
             sleepNightExplanation = runBlocking { buildSleepNightExplanation() }

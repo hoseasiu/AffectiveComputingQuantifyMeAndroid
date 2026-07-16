@@ -79,11 +79,13 @@ class ExperimentChooseActivity : ComponentActivity() {
     }
 }
 
-private val chooseItems = listOf(
-    R.drawable.experiment_choose_leisurehappy to ExperimentType.LeisureHappiness,
-    R.drawable.experiment_choose_stepssleepefficiency to ExperimentType.StepsSleepEfficiency,
-    R.drawable.experiment_choose_sleepdurationproductivity to ExperimentType.SleepDurationProductivity,
-    R.drawable.experiment_choose_sleepvariabilitystress to ExperimentType.SleepVariabilityStress
+// Display order on the choose screen -- deliberately independent of
+// ExperimentType.getAllTypes()'s config order (this is a UI-presentation concern).
+private val chooseOrder = listOf(
+    "leisurehappiness",
+    "stepssleepefficiency",
+    "sleepdurationproductivity",
+    "sleepvariabilitystress"
 )
 
 @Composable
@@ -99,7 +101,7 @@ private fun ExperimentChooseScreen(onExperimentTypeSelected: (ExperimentType) ->
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 15.dp, vertical = 20.dp)
         ) {
-            chooseItems.forEach { (drawableId, type) ->
+            chooseOrder.map { ExperimentType.fromTypeKey(it) }.forEach { type ->
                 Card(
                     onClick = { onExperimentTypeSelected(type) },
                     modifier = Modifier
@@ -109,7 +111,7 @@ private fun ExperimentChooseScreen(onExperimentTypeSelected: (ExperimentType) ->
                     elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
                 ) {
                     Image(
-                        painter = painterResource(drawableId),
+                        painter = painterResource(type.chooseBannerIconId),
                         contentDescription = type.name,
                         contentScale = ContentScale.FillWidth,
                         modifier = Modifier.fillMaxWidth()
