@@ -68,6 +68,14 @@ android {
         abortOnError false
     }
 
+    testOptions {
+        // Required for Robolectric to load app resources/manifest (AGENT_PLANS/IMPROVEMENTS.md
+        // item 5 -- broadening JVM unit-test coverage past the engine module).
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
     buildFeatures {
         compose true
     }
@@ -81,6 +89,18 @@ android {
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     testImplementation 'junit:junit:4.13.2'
+
+    // Broadened JVM unit-test coverage (AGENT_PLANS/IMPROVEMENTS.md item 5): Room DAO tests,
+    // the CheckinReminderScheduler WorkManager test, and ExperimentRepository orchestration
+    // tests all need a Robolectric-provided Context/Android resources. Localized to
+    // testImplementation only -- nothing here ships in the app.
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'androidx.test:core:1.6.1'
+    testImplementation 'androidx.test.ext:junit:1.2.1'
+    testImplementation "androidx.room:room-testing:2.6.1"
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
+    testImplementation 'androidx.work:work-testing:2.9.1'
+
     debugImplementation 'com.squareup.leakcanary:leakcanary-android:1.3.1'
     releaseImplementation 'com.squareup.leakcanary:leakcanary-android-no-op:1.3.1'
 
@@ -144,6 +164,4 @@ dependencies {
 
     // Health Connect (Phase 3 replacement for the dead Jawbone UP SDK)
     implementation 'androidx.health.connect:connect-client:1.1.0-alpha07'
-
-    implementation 'ch.acra:acra-http:5.11.3'
 }
