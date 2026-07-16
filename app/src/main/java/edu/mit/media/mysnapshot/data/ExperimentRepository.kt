@@ -128,6 +128,42 @@ class ExperimentRepository @Inject constructor(
         }
     }
 
+    /** One upcoming day's calendar date and its (deterministically known) target. */
+    data class UpcomingTarget(val date: LocalDate, val target: Float?)
+
+    /**
+     * Preview of the remaining days' targets in the *current* stage (paper §6.4:
+     * previously withheld deliberately to avoid biasing behavior -- see
+     * `ExperimentEngine.getDailyTarget`'s day-parity rule, which is all this needs since
+     * future targets don't depend on not-yet-collected sensor data). Opt-in only -- see
+     * `ExperimentInstructionsActivity`. Stops at the stage's normal 7-day boundary; it
+     * can't predict an early end/restart from missed days or an unstable output.
+     */
+    suspend fun getUpcomingTargetPreview(experimentId: Int): List<UpcomingTarget> {
+        val experiment = experimentDao.getById(experimentId).first()
+            ?: error("No experiment with id $experimentId")
+        if (experiment.currentStage == 0) return emptyList()
+
+        val type = ExperimentType.fromTypeKey(experiment.type)
+        val state = ExperimentStageState.fromJson(
+            experiment.stageDatesJson, experiment.stageTargetValuesJson, experiment.stageRestartCountJson
+        )
+        val today = LocalDate.now()
+        val (start, _) = stageDateRange(state, experiment.currentStage, today, experiment.endTime, clipToToday = false)
+        if (start == null) return emptyList()
+
+        val dayInStage = Days.daysBetween(start, today).days
+        val stageTarget = state.stageTargetValues.getOrNull(experiment.currentStage) ?: return emptyList()
+
+        // Stages run day-in-stage 0..6, ending on day 7 (see ExperimentEngine.shouldEndStage).
+        return ((dayInStage + 1) until 7).map { day ->
+            UpcomingTarget(
+                date = start.plusDays(day),
+                target = ExperimentEngine.getDailyTarget(type.useVariability, stageTarget, experiment.initialStageAverage ?: 0f, day)
+            )
+        }
+    }
+
     /** Equivalent of `/refresh_instructions/`: recompute today's instruction, no new check-in. */
     suspend fun refreshInstructions(experimentId: Int): CheckinOutcome {
         val experiment = experimentDao.getById(experimentId).first()

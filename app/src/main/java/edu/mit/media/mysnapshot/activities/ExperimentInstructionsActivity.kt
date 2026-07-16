@@ -58,6 +58,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.R
 import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.database.ExperimentEntity
+import org.joda.time.format.DateTimeFormat
 import edu.mit.media.mysnapshot.engine.CheckinOutcome
 import edu.mit.media.mysnapshot.engine.ExperimentEngine
 import edu.mit.media.mysnapshot.engine.ExperimentType
@@ -95,6 +96,9 @@ class ExperimentInstructionsActivity : ComponentActivity() {
                 var failedStageDialogVisible by remember { mutableStateOf(false) }
                 var failedStageReason by remember { mutableStateOf<ExperimentEngine.RestartReason?>(null) }
                 var progressOptInDialogVisible by remember { mutableStateOf(false) }
+                var targetPreviewOptInDialogVisible by remember { mutableStateOf(false) }
+                var targetPreviewDialogVisible by remember { mutableStateOf(false) }
+                var upcomingTargets by remember { mutableStateOf<List<ExperimentRepository.UpcomingTarget>>(emptyList()) }
 
                 LaunchedEffect(resumeTrigger) {
                     val launchIntent = intent
@@ -181,6 +185,20 @@ class ExperimentInstructionsActivity : ComponentActivity() {
                                 progressOptInDialogVisible = true
                             }
                         }
+                    },
+                    onPreviewTargetsClick = {
+                        val experiment = (uiState as? InstructionsUiState.Instructions)?.experiment
+                        if (experiment != null) {
+                            val prefs = PreferenceManager.getDefaultSharedPreferences(this@ExperimentInstructionsActivity)
+                            if (prefs.getBoolean(SHOW_TARGET_PREVIEW_PREF, false)) {
+                                lifecycleScope.launch {
+                                    upcomingTargets = repository.getUpcomingTargetPreview(experiment.id)
+                                    targetPreviewDialogVisible = true
+                                }
+                            } else {
+                                targetPreviewOptInDialogVisible = true
+                            }
+                        }
                     }
                 )
 
@@ -210,6 +228,35 @@ class ExperimentInstructionsActivity : ComponentActivity() {
                         }
                     )
                 }
+                if (targetPreviewOptInDialogVisible) {
+                    TargetPreviewOptInDialog(
+                        onDismiss = { targetPreviewOptInDialogVisible = false },
+                        onConfirm = {
+                            targetPreviewOptInDialogVisible = false
+                            val experiment = (uiState as? InstructionsUiState.Instructions)?.experiment
+                            if (experiment != null) {
+                                PreferenceManager.getDefaultSharedPreferences(this@ExperimentInstructionsActivity)
+                                    .edit()
+                                    .putBoolean(SHOW_TARGET_PREVIEW_PREF, true)
+                                    .apply()
+                                lifecycleScope.launch {
+                                    upcomingTargets = repository.getUpcomingTargetPreview(experiment.id)
+                                    targetPreviewDialogVisible = true
+                                }
+                            }
+                        }
+                    )
+                }
+                if (targetPreviewDialogVisible) {
+                    val experimentType = (uiState as? InstructionsUiState.Instructions)?.experimentType
+                    if (experimentType != null) {
+                        TargetPreviewDialog(
+                            experimentType = experimentType,
+                            upcomingTargets = upcomingTargets,
+                            onDismiss = { targetPreviewDialogVisible = false }
+                        )
+                    }
+                }
             }
         }
     }
@@ -223,6 +270,7 @@ class ExperimentInstructionsActivity : ComponentActivity() {
         const val LOGTAG = "ExperimentInstructionsActivity"
         const val EXPERIMENT_ID_EXTRA = "experiment_id"
         private const val SHOW_PROGRESS_PREF = "show_progress_during_experiment"
+        private const val SHOW_TARGET_PREVIEW_PREF = "show_target_preview_during_experiment"
         private const val HAS_OUTCOME_EXTRA = "has_outcome"
         private const val NEW_STAGE_EXTRA = "new_stage"
         private const val RESTARTED_STAGE_EXTRA = "restarted_stage"
@@ -293,7 +341,8 @@ private fun InstructionsScreen(
     onSettingsClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onRefreshClick: () -> Unit,
-    onProgressClick: () -> Unit
+    onProgressClick: () -> Unit,
+    onPreviewTargetsClick: () -> Unit
 ) {
     when (uiState) {
         InstructionsUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -311,7 +360,8 @@ private fun InstructionsScreen(
             onSettingsClick = onSettingsClick,
             onHistoryClick = onHistoryClick,
             onRefreshClick = onRefreshClick,
-            onProgressClick = onProgressClick
+            onProgressClick = onProgressClick,
+            onPreviewTargetsClick = onPreviewTargetsClick
         )
     }
 }
@@ -349,7 +399,8 @@ private fun InstructionsContent(
     onSettingsClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onRefreshClick: () -> Unit,
-    onProgressClick: () -> Unit
+    onProgressClick: () -> Unit,
+    onPreviewTargetsClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().background(FadeYellow)) {
         Row(
@@ -358,6 +409,9 @@ private fun InstructionsContent(
                 .padding(top = 10.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.End
         ) {
+            if (outcome.currentStage != 0) {
+                HeaderIcon(R.drawable.icon_settings_calendar, "Preview Upcoming Targets", onPreviewTargetsClick)
+            }
             HeaderIcon(R.drawable.icon_settings_chart, "Progress", onProgressClick)
             RefreshHeaderIcon(isRefreshing = isRefreshing, onClick = onRefreshClick)
             HeaderIcon(R.drawable.button_profile, "Settings", onSettingsClick)
@@ -639,3 +693,63 @@ private fun ProgressOptInDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
         }
     )
 }
+
+@Composable
+private fun TargetPreviewOptInDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Preview Upcoming Targets?") },
+        text = {
+            Text(
+                "You can see what your targets are likely to be for the rest of this " +
+                    "stage, instead of finding out each morning. Keep in mind that knowing " +
+                    "targets ahead of time might change how you behave today, which can " +
+                    "affect the experiment's accuracy. Turn this on?"
+            )
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) { Text("Yes, show me") }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) { Text("No thanks") }
+        }
+    )
+}
+
+@Composable
+private fun TargetPreviewDialog(
+    experimentType: ExperimentType,
+    upcomingTargets: List<ExperimentRepository.UpcomingTarget>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Upcoming Targets") },
+        text = {
+            if (upcomingTargets.isEmpty()) {
+                Text("No more days left to preview in this stage.")
+            } else {
+                Column {
+                    upcomingTargets.forEach { upcoming ->
+                        Text(
+                            text = "${previewDayFormat.print(upcoming.date)}: " +
+                                (upcoming.target?.let { experimentType.formatTarget(it) } ?: "-"),
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                    Text(
+                        text = "Assumes this stage runs its normal course -- it can still " +
+                            "end or restart early depending on your check-ins.",
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) { Text("Got it") }
+        }
+    )
+}
+
+private val previewDayFormat = DateTimeFormat.forPattern("EEE, MMM d")

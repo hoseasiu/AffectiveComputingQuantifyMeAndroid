@@ -83,6 +83,7 @@ By clicking "I agree" you acknowledge that this app runs entirely on your device
     <string name="notification_title">Notification</string>
     <string name="notification_content">Notification</string>
     <string name="alarm_title">Alarm</string>
+    <string name="adherence_nudge_title">Keep it up!</string>
 
     <string name="intro_experiment_text"><![CDATA[We will guide you through experiments so you can find out what works for <i>you</i>.]]></string>
     <string name="sleepvariability_intro_text"><![CDATA[

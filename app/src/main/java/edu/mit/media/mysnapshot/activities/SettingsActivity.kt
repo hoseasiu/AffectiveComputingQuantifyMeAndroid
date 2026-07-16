@@ -30,6 +30,7 @@ import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionNotificati
 import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionRadioGroupFragment
 import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionSpinnerFragment
 import edu.mit.media.mysnapshot.health.HealthConnectManager
+import edu.mit.media.mysnapshot.notifications.AdherenceNudgeScheduler
 import edu.mit.media.mysnapshot.notifications.CheckinReminderScheduler
 import edu.mit.media.mysnapshot.view.SelectableIcon
 import java.util.TimeZone
@@ -121,6 +122,7 @@ class SettingsActivity : QuestionActivity() {
             requestNotificationPermissionIfNeeded()
         }
         CheckinReminderScheduler.schedule(this)
+        AdherenceNudgeScheduler.schedule(this)
 
         if (isBuildingData()) {
             val intent = Intent(this@SettingsActivity, IntroThanksActivity::class.java)

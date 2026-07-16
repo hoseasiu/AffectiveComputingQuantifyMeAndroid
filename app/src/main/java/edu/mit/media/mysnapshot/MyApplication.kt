@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import edu.mit.media.mysnapshot.engine.ExperimentTypeRegistry
+import edu.mit.media.mysnapshot.notifications.AdherenceNudgeScheduler
 import edu.mit.media.mysnapshot.notifications.CheckinReminderScheduler
 import javax.inject.Inject
 
@@ -33,5 +34,6 @@ class MyApplication : Application(), Configuration.Provider {
         // enqueueUniquePeriodicWork's UPDATE policy makes this a no-op if the schedule
         // already matches, so calling it here doesn't fight with SettingsActivity's own call.
         CheckinReminderScheduler.schedule(this)
+        AdherenceNudgeScheduler.schedule(this)
     }
 }
