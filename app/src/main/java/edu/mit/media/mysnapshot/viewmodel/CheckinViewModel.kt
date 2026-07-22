@@ -1,8 +1,11 @@
 package edu.mit.media.mysnapshot.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import edu.mit.media.mysnapshot.R
 import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.CheckinOutcome
@@ -73,7 +76,8 @@ sealed interface CheckinEvent {
 @HiltViewModel
 class CheckinViewModel @Inject constructor(
     private val repository: ExperimentRepository,
-    private val healthConnect: HealthConnectManager
+    private val healthConnect: HealthConnectManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CheckinUiState())
@@ -148,12 +152,16 @@ class CheckinViewModel @Inject constructor(
         val start = session.startTime.atZone(zone)
         val end = session.endTime.atZone(zone)
         val night = session.attributedNight.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
-        return "We counted your sleep from ${start.format(timeFormat)} to ${end.format(timeFormat)} " +
-            "as the night of $night (a night belongs to the day you woke up, not the day you fell asleep)."
+        return context.getString(
+            R.string.checkin_sleep_night_explanation,
+            start.format(timeFormat),
+            end.format(timeFormat),
+            night
+        )
     }
 
     private fun buildIntroText(sleepExplanation: String?): String {
-        var introText = "We're going to ask you a couple quick questions about your day, then we'll let you know what you should do for your experiment.\n\nYou only need to check in once a day!"
+        var introText = context.getString(R.string.checkin_intro_text)
         sleepExplanation?.let { introText += "\n\n$it" }
         return introText
     }

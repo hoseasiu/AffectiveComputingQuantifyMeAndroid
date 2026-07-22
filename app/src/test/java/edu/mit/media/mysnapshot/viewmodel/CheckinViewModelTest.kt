@@ -61,7 +61,7 @@ class CheckinViewModelTest {
             .build()
         val healthConnect = HealthConnectManager(context)
         repository = ExperimentRepository(context, db, healthConnect)
-        viewModel = CheckinViewModel(repository, healthConnect)
+        viewModel = CheckinViewModel(repository, healthConnect, context)
     }
 
     @After
