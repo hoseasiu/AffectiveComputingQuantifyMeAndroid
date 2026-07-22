@@ -5,9 +5,14 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import edu.mit.media.mysnapshot.database.CheckinEntity
 import edu.mit.media.mysnapshot.database.QuantifyMeDatabase
+import edu.mit.media.mysnapshot.engine.CustomSignalDef
+import edu.mit.media.mysnapshot.engine.CustomValueKind
 import edu.mit.media.mysnapshot.engine.ExperimentEngine
 import edu.mit.media.mysnapshot.engine.ExperimentType
 import edu.mit.media.mysnapshot.engine.ExperimentTypeRegistry
+import edu.mit.media.mysnapshot.engine.FormatKind
+import edu.mit.media.mysnapshot.engine.RangeTable
+import edu.mit.media.mysnapshot.engine.SignalRef
 import edu.mit.media.mysnapshot.engine.readBundledExperimentTypesJson
 import edu.mit.media.mysnapshot.health.FakeHealthConnectGateway
 import edu.mit.media.mysnapshot.health.HealthConnectManager
@@ -16,6 +21,7 @@ import kotlinx.coroutines.runBlocking
 import java.time.LocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -494,4 +500,68 @@ class ExperimentRepositoryTest {
         assertEquals(1, outcome.currentStage)
         assertEquals(expectedTargets.stageTargetValues[1], outcome.target)
     }
+
+    // ---- deleteCustomType (issue #34's deletion scope guard) ------------------------
+
+    @Test
+    fun deleteCustomType_neverUsedByAnExperiment_deletesAndRemovesFromRegistry() = runBlocking {
+        repository.createCustomType(cupsOfCoffeeMoodType())
+        assertTrue(ExperimentType.getAllTypes().any { it.typeKey == "cupsofcoffeemood_repotest" })
+
+        val deleted = repository.deleteCustomType("cupsofcoffeemood_repotest")
+
+        assertTrue("an unused custom type must be deletable", deleted)
+        assertFalse(
+            "a deleted custom type must no longer appear in the registry",
+            ExperimentType.getAllTypes().any { it.typeKey == "cupsofcoffeemood_repotest" }
+        )
+    }
+
+    @Test
+    fun deleteCustomType_stillReferencedByAnExperiment_refusesAndKeepsType() = runBlocking {
+        val type = cupsOfCoffeeMoodType()
+        repository.createCustomType(type)
+        repository.createExperiment(type, 3, 3, 3)
+
+        val deleted = repository.deleteCustomType(type.typeKey)
+
+        assertFalse("a custom type with a linked experiment must not be deletable", deleted)
+        assertTrue(
+            "a refused delete must leave the type in the registry",
+            ExperimentType.getAllTypes().any { it.typeKey == type.typeKey }
+        )
+    }
+
+    private fun cupsOfCoffeeMoodType() = ExperimentType(
+        typeKey = "cupsofcoffeemood_repotest",
+        name = "How does my coffee intake affect my mood?",
+        ranges = RangeTable(under = 1f, n1 = 2f, n2 = 3f, n3 = 4f, over = 5f),
+        rangeSize = 1f,
+        stableRange = 1f,
+        useVariability = false,
+        shouldMinimizeResult = false,
+        usesSleepData = false,
+        inputSignal = SignalRef.Custom(
+            CustomSignalDef(
+                label = "Coffee",
+                question = "How many cups of coffee did you drink today?",
+                kind = CustomValueKind.COUNT,
+                unitLabel = "cups"
+            )
+        ),
+        outputSignal = SignalRef.Custom(
+            CustomSignalDef(
+                label = "Mood",
+                question = "How was your mood today?",
+                kind = CustomValueKind.SCALE_1_7,
+                lowLabel = "Low",
+                highLabel = "High"
+            )
+        ),
+        targetFormatKind = FormatKind.RAW_NUMBER,
+        resultFormatKind = FormatKind.RAW_NUMBER,
+        instructionTemplate = "Try to drink {value} cups of coffee today",
+        resultTemplate = "Try to drink {value} cups of coffee each day",
+        targetTemplate = "{value} Cups"
+    )
 }
