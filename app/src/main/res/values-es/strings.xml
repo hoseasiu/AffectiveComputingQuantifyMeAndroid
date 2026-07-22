@@ -134,4 +134,10 @@ Al hacer clic en "Acepto" reconoces que esta aplicación funciona completamente 
     <string name="checkin_leisure_select_option_label">Selecciona una opción</string>
     <string name="checkin_leisure_select_description">%1$s. Selecciona una opción. Actualmente %2$s</string>
 
+    <string name="checkin_custom_scale_label_low">Bajo</string>
+    <string name="checkin_custom_scale_label_high">Alto</string>
+    <string name="checkin_custom_numeric_label">Ingresa un valor</string>
+    <string name="checkin_custom_numeric_unanswered">aún sin responder</string>
+    <string name="checkin_custom_numeric_description">%1$s. Actualmente %2$s</string>
+
 </resources>

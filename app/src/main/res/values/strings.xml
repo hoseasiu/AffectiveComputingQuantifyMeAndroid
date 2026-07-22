@@ -176,4 +176,12 @@ By clicking "I agree" you acknowledge that this app runs entirely on your device
     <string name="checkin_leisure_select_option_label">Please Select an Option</string>
     <string name="checkin_leisure_select_description">%1$s. Please Select an Option. Currently %2$s</string>
 
+    <!-- Custom-signal questions appended to the wizard for experiments with a user-defined
+         signal (issue #31/#32) -->
+    <string name="checkin_custom_scale_label_low">Low</string>
+    <string name="checkin_custom_scale_label_high">High</string>
+    <string name="checkin_custom_numeric_label">Enter a value</string>
+    <string name="checkin_custom_numeric_unanswered">not yet answered</string>
+    <string name="checkin_custom_numeric_description">%1$s. Currently %2$s</string>
+
 </resources>
