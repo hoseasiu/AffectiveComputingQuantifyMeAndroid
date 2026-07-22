@@ -7,7 +7,9 @@ import org.junit.Test
  * Phase 5.4 proof that the bundled `assets/experiment_types.json` config parses into the
  * same four experiment definitions/format strings the old hardcoded sealed-class
  * `ExperimentType` produced (see the deleted class's `formatInstruction`/`formatTarget`/
- * `formatResult` overrides for the values these assertions were derived from).
+ * `formatResult` overrides for the values these assertions were derived from), plus the
+ * `exercisestress` signal added in #29 and the `stepshappiness`/`leisureproductivity`
+ * recombinations added in #28.
  */
 class ExperimentTypeConfigTest {
 
@@ -25,7 +27,9 @@ class ExperimentTypeConfigTest {
                 "sleepvariabilitystress",
                 "sleepdurationproductivity",
                 "stepssleepefficiency",
-                "exercisestress"
+                "exercisestress",
+                "stepshappiness",
+                "leisureproductivity"
             ),
             types.map { it.typeKey }.toSet()
         )
@@ -86,6 +90,30 @@ class ExperimentTypeConfigTest {
         assertEquals("Try to exercise 20 minutes today", t.formatInstruction(20f))
         assertEquals("Try to exercise 20 minutes each day", t.formatResult(20f))
         assertEquals("20 Minutes", t.formatTarget(20f))
+    }
+
+    @Test
+    fun stepsHappiness_formatsMatchStepsSleepEfficiencyShape() {
+        val t = type("stepshappiness")
+        assertEquals(false, t.useVariability)
+        assertEquals(false, t.shouldMinimizeResult)
+        assertEquals(SignalSource.HEALTH_CONNECT_STEPS, t.inputSignal)
+        assertEquals(SignalSource.CHECKIN_HAPPINESS, t.outputSignal)
+        assertEquals("Try to walk 8000 steps today", t.formatInstruction(8000f))
+        assertEquals("Try to walk 8000 steps every day", t.formatResult(8000f))
+        assertEquals("8000 Steps", t.formatTarget(8000f))
+    }
+
+    @Test
+    fun leisureProductivity_formatsMatchLeisureHappinessShape() {
+        val t = type("leisureproductivity")
+        assertEquals(false, t.useVariability)
+        assertEquals(false, t.shouldMinimizeResult)
+        assertEquals(SignalSource.CHECKIN_LEISURE_TIME, t.inputSignal)
+        assertEquals(SignalSource.CHECKIN_PRODUCTIVITY, t.outputSignal)
+        assertEquals("Try to take 1.5 hours of leisure time today", t.formatInstruction(90f))
+        assertEquals("Try to get around 1.5 hours of leisure time each day", t.formatResult(90f))
+        assertEquals("1.5 Hours", t.formatTarget(90f))
     }
 
     @Test

@@ -111,6 +111,16 @@ By clicking "I agree" you acknowledge that this app runs entirely on your device
         How many minutes of exercise does it actually take to bring your stress level down?\n\n
         We\'ll help you find your own sweet spot.
     ]]></string>
+    <string name="steps_happiness_intro_text"><![CDATA[
+        Getting up and getting active helps all aspects of your life.\n\n
+        But at what point does it become too much?\n\n
+        We\'ll help you find out how much activity keeps you at your happiest.
+    ]]></string>
+    <string name="leisure_productivity_intro_text"><![CDATA[
+        Leisure time! Everyone loves it.\n\n
+        Too little, and you burn out. Too much, and you get nothing done. But how much is right to keep you productive?\n\n
+        We\'ll help you measure just how much "you time" you need each day to get your best work done.
+    ]]></string>
 
     <string-array name="stage_instructions">
         <item>We\'re figuring out your normal routine. Please keep your sleep and activity habits as routine as possible.</item>

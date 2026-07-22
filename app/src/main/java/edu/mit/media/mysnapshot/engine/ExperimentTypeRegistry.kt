@@ -93,7 +93,9 @@ object ExperimentTypeRegistry {
         "sleepvariabilitystress" to R.layout.experiment_intro_sleepvariabilitystress,
         "sleepdurationproductivity" to R.layout.experiment_intro_sleepdurationproductivity,
         "stepssleepefficiency" to R.layout.experiment_intro_stepssleepefficiency,
-        "exercisestress" to R.layout.experiment_intro_exercisestress
+        "exercisestress" to R.layout.experiment_intro_exercisestress,
+        "stepshappiness" to R.layout.experiment_intro_stepshappiness,
+        "leisureproductivity" to R.layout.experiment_intro_leisureproductivity
     )
 
     private val iconByKey = mapOf(
@@ -101,7 +103,9 @@ object ExperimentTypeRegistry {
         "sleepvariabilitystress" to R.drawable.icon_experiment_sleepdurationproductivity,
         "sleepdurationproductivity" to R.drawable.icon_experiment_sleepvariabilitystress,
         "stepssleepefficiency" to R.drawable.icon_experiment_stepssleepefficiency,
-        "exercisestress" to R.drawable.icon_experiment_exercisestress
+        "exercisestress" to R.drawable.icon_experiment_exercisestress,
+        "stepshappiness" to R.drawable.icon_experiment_stepshappiness,
+        "leisureproductivity" to R.drawable.icon_experiment_leisureproductivity
     )
 
     private val chooseBannerByKey = mapOf(
@@ -109,7 +113,9 @@ object ExperimentTypeRegistry {
         "stepssleepefficiency" to R.drawable.experiment_choose_stepssleepefficiency,
         "sleepdurationproductivity" to R.drawable.experiment_choose_sleepdurationproductivity,
         "sleepvariabilitystress" to R.drawable.experiment_choose_sleepvariabilitystress,
-        "exercisestress" to R.drawable.experiment_choose_exercisestress
+        "exercisestress" to R.drawable.experiment_choose_exercisestress,
+        "stepshappiness" to R.drawable.experiment_choose_stepshappiness,
+        "leisureproductivity" to R.drawable.experiment_choose_leisureproductivity
     )
 
     fun introLayoutId(typeKey: String): Int = introLayoutByKey.getValue(typeKey)
