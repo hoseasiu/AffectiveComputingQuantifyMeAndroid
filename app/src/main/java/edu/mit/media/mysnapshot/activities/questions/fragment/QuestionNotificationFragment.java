@@ -6,8 +6,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CompoundButton;
 
-import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 import edu.mit.media.mysnapshot.R;
 import edu.mit.media.mysnapshot.view.TimePickerView;
@@ -36,7 +36,7 @@ public class QuestionNotificationFragment extends QuestionFragment<QuestionNotif
         notificationTime.setTime(parseDateString(value.notificationTime));
         notificationTime.setListener(new TimePickerView.TimePickerListener() {
             @Override
-            public void onTimePicked(DateTime time) {
+            public void onTimePicked(LocalTime time) {
                 value.notificationTime = encode(time);
             }
         });
@@ -78,18 +78,18 @@ public class QuestionNotificationFragment extends QuestionFragment<QuestionNotif
         super.setValue(value);
     }
 
-    public static DateTime parseDateString(String in) {
+    public static LocalTime parseDateString(String in) {
         if (in == null) {
             return null;
         }
-        return DateTimeFormat.forPattern("HH:mm").parseDateTime(in);
+        return LocalTime.parse(in, DateTimeFormatter.ofPattern("HH:mm"));
     }
 
-    public static String encode(DateTime in) {
+    public static String encode(LocalTime in) {
         if (in == null) {
             return null;
         }
-        return DateTimeFormat.forPattern("HH:mm").print(in);
+        return DateTimeFormatter.ofPattern("HH:mm").format(in);
     }
 
     @Override

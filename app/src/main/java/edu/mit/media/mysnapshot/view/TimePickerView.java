@@ -14,8 +14,8 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.TimePicker;
 
-import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 import edu.mit.media.mysnapshot.R;
 
@@ -23,14 +23,14 @@ import edu.mit.media.mysnapshot.R;
 public class TimePickerView extends FrameLayout {
 
     public interface TimePickerListener {
-        void onTimePicked(DateTime time);
+        void onTimePicked(LocalTime time);
     }
 
 
     View button, rootView;
     TextView timeTextView;
-    DateTime time = null;
-    DateTime defaultTime = null;
+    LocalTime time = null;
+    LocalTime defaultTime = null;
     TimePickerListener listener;
 
     boolean smallPicker = false;
@@ -85,7 +85,7 @@ public class TimePickerView extends FrameLayout {
         newFragment.show(((Activity) getContext()).getFragmentManager(), "timePicker");
     }
 
-    public void setTime(DateTime time) {
+    public void setTime(LocalTime time) {
         if (time == null) {
             return;
         }
@@ -93,7 +93,7 @@ public class TimePickerView extends FrameLayout {
         setTimeText();
     }
 
-    public DateTime getTime() {
+    public LocalTime getTime() {
         return time;
     }
 
@@ -104,7 +104,7 @@ public class TimePickerView extends FrameLayout {
                 timeTextView.setText("");
                 timeTextView.setVisibility(View.GONE);
             } else {
-                timeTextView.setText(DateTimeFormat.forPattern("h:mm a").print(time));
+                timeTextView.setText(DateTimeFormatter.ofPattern("h:mm a").format(time));
                 timeTextView.setVisibility(View.VISIBLE);
             }
         }
@@ -116,18 +116,17 @@ public class TimePickerView extends FrameLayout {
 
         @Override
         public Dialog onCreateDialog(Bundle savedInstanceState) {
-            // Use the current date as the default date in the picker
-            DateTime defaultDT = defaultTime == null ? new DateTime().withTime(0, 0, 0, 0) : defaultTime;
-            final DateTime d = time == null ? defaultDT : time;
+            LocalTime defaultDT = defaultTime == null ? LocalTime.MIDNIGHT : defaultTime;
+            final LocalTime d = time == null ? defaultDT : time;
 
             // Create a new instance of DatePickerDialog and return it
-            return new TimePickerDialog(getActivity(), this, d.getHourOfDay(), d.getMinuteOfHour(), true);
+            return new TimePickerDialog(getActivity(), this, d.getHour(), d.getMinute(), true);
         }
 
         @Override
         public void onTimeSet(TimePicker timePicker, int hour, int minute) {
             shown = false;
-            setTime(new DateTime().withTime(hour,minute,0,0));
+            setTime(LocalTime.of(hour, minute));
             if (listener != null) {
                 listener.onTimePicked(time);
             }
@@ -140,7 +139,7 @@ public class TimePickerView extends FrameLayout {
         }
     }
 
-    public void setDefaultTime(DateTime defaultTime) {
+    public void setDefaultTime(LocalTime defaultTime) {
         this.defaultTime = defaultTime;
     }
 }

@@ -4,8 +4,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -50,7 +50,7 @@ class ExperimentDaoTest {
 
     private fun experiment(
         type: String = "leisurehappiness",
-        startTime: DateTime = DateTime.now(DateTimeZone.UTC),
+        startTime: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC),
         isActive: Boolean = true,
         isCancelled: Boolean = false
     ) = ExperimentEntity(
@@ -129,8 +129,8 @@ class ExperimentDaoTest {
 
     @Test
     fun getLatestExperiment_ordersByStartTimeDescending_regardlessOfActiveState() = runBlocking {
-        val older = experiment(startTime = DateTime(2020, 1, 1, 12, 0, DateTimeZone.UTC), isActive = false)
-        val newer = experiment(startTime = DateTime(2024, 1, 1, 12, 0, DateTimeZone.UTC), isActive = false)
+        val older = experiment(startTime = OffsetDateTime.of(2020, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC), isActive = false)
+        val newer = experiment(startTime = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC), isActive = false)
         dao.insert(older)
         val newerId = dao.insert(newer)
 
@@ -143,14 +143,11 @@ class ExperimentDaoTest {
 
     @Test
     fun getAllExperiments_ordersByStartTimeDescending() = runBlocking {
-        // Converters.toDateTime() re-materializes stored rows in the JVM's default time
-        // zone (see ConvertersTest), so a stored instant's calendar year as read back can
-        // differ from the year it was constructed with if that instant is near a year
-        // boundary in UTC. Use a safely mid-year date (June 15) so the `.year` assertion
-        // below is stable regardless of the machine's default time zone.
-        val first = experiment(startTime = DateTime(2021, 6, 15, 12, 0, DateTimeZone.UTC))
-        val second = experiment(startTime = DateTime(2022, 6, 15, 12, 0, DateTimeZone.UTC))
-        val third = experiment(startTime = DateTime(2023, 6, 15, 12, 0, DateTimeZone.UTC))
+        // Use a safely mid-year date (June 15) so the `.year` assertion below is stable
+        // regardless of the machine's default time zone.
+        val first = experiment(startTime = OffsetDateTime.of(2021, 6, 15, 12, 0, 0, 0, ZoneOffset.UTC))
+        val second = experiment(startTime = OffsetDateTime.of(2022, 6, 15, 12, 0, 0, 0, ZoneOffset.UTC))
+        val third = experiment(startTime = OffsetDateTime.of(2023, 6, 15, 12, 0, 0, 0, ZoneOffset.UTC))
         dao.insert(first)
         dao.insert(third)
         dao.insert(second)
@@ -182,7 +179,7 @@ class ExperimentDaoTest {
         checkinDao.insert(
             CheckinEntity(
                 experimentId = experimentId,
-                checkinDate = DateTime.now(DateTimeZone.UTC),
+                checkinDate = OffsetDateTime.now(ZoneOffset.UTC),
                 didFollowInstructions = 1,
                 happiness = 5,
                 stress = 2,

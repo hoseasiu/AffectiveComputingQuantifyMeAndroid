@@ -3,7 +3,6 @@ package edu.mit.media.mysnapshot.health
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
-import org.joda.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -14,6 +13,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
 
@@ -43,7 +43,7 @@ class HealthConnectManagerTest {
     }
 
     private fun LocalDate.startOfDayInstant(): Instant =
-        toDateTimeAtStartOfDay().toDate().toInstant()
+        atStartOfDay(ZoneId.systemDefault()).toInstant()
 
     private fun session(
         startDate: LocalDate,
@@ -51,7 +51,7 @@ class HealthConnectManagerTest {
         durationMinutes: Long,
         stages: List<SleepSessionRecord.Stage> = emptyList()
     ): SleepSessionRecord {
-        val start = startDate.toDateTimeAtStartOfDay().plusHours(startHour).toDate().toInstant()
+        val start = startDate.atStartOfDay(ZoneId.systemDefault()).plusHours(startHour.toLong()).toInstant()
         val end = start.plusSeconds(durationMinutes * 60)
         return SleepSessionRecord(
             startTime = start,
@@ -69,7 +69,7 @@ class HealthConnectManagerTest {
         val today = LocalDate.now()
         manager.testGatewayOverride = FakeHealthConnectGateway(
             stepsFn = { start, _ ->
-                when (LocalDate(start.toEpochMilli())) {
+                when (start.atZone(ZoneId.systemDefault()).toLocalDate()) {
                     today -> 5000f
                     today.plusDays(1) -> 8000f
                     else -> null
@@ -124,7 +124,7 @@ class HealthConnectManagerTest {
         val today = LocalDate.now()
         manager.testGatewayOverride = FakeHealthConnectGateway(
             exerciseMinutesFn = { start, _ ->
-                when (LocalDate(start.toEpochMilli())) {
+                when (start.atZone(ZoneId.systemDefault()).toLocalDate()) {
                     today -> 20f
                     today.plusDays(1) -> 45f
                     else -> null
@@ -200,12 +200,12 @@ class HealthConnectManagerTest {
     @Test
     fun getSleepStartMinuteOfDay_usesTheSessionsOwnZoneOffsetNotSystemDefault() = runBlocking {
         val today = LocalDate.now()
-        // Absolute instant fixed at UTC noon via joda's UTC zone (independent of the host
-        // machine's default timezone), then paired with an explicit, deliberately-not-UTC
-        // +05:00 record offset -- if getSleepStartMinuteOfDay used the system default zone
-        // instead of the session's own offset, this assertion would fail on any machine whose
-        // default zone isn't +05:00.
-        val start = today.toDateTimeAtStartOfDay(org.joda.time.DateTimeZone.UTC).plusHours(12).toDate().toInstant()
+        // Absolute instant fixed at UTC noon (independent of the host machine's default
+        // timezone), then paired with an explicit, deliberately-not-UTC +05:00 record offset
+        // -- if getSleepStartMinuteOfDay used the system default zone instead of the
+        // session's own offset, this assertion would fail on any machine whose default zone
+        // isn't +05:00.
+        val start = today.atStartOfDay(ZoneOffset.UTC).plusHours(12).toInstant()
         val daytimeSession = SleepSessionRecord(
             startTime = start,
             startZoneOffset = ZoneOffset.ofHours(5),
@@ -223,7 +223,7 @@ class HealthConnectManagerTest {
     @Test
     fun getSleepStartMinuteOfDay_missingZoneOffset_fallsBackToSystemDefaultZone() = runBlocking {
         val today = LocalDate.now()
-        val start = today.toDateTimeAtStartOfDay().plusHours(6).plusMinutes(30).toDate().toInstant()
+        val start = today.atStartOfDay(ZoneId.systemDefault()).plusHours(6).plusMinutes(30).toInstant()
         val noOffsetSession = SleepSessionRecord(
             startTime = start,
             startZoneOffset = null,
@@ -244,7 +244,7 @@ class HealthConnectManagerTest {
     @Test
     fun getSleepEfficiency_subtractsAwakeStagesFromTotalDuration() = runBlocking {
         val today = LocalDate.now()
-        val start = today.minusDays(1).toDateTimeAtStartOfDay().plusHours(23).toDate().toInstant()
+        val start = today.minusDays(1).atStartOfDay(ZoneId.systemDefault()).plusHours(23).toInstant()
         val end = start.plusSeconds(8 * 3600L) // 8h session
         val awakeStage = SleepSessionRecord.Stage(
             startTime = start.plusSeconds(3600),
@@ -304,7 +304,7 @@ class HealthConnectManagerTest {
 
         assertEquals(newer.endTime, result!!.endTime)
         assertEquals(newer.startTime, result.startTime)
-        assertEquals(LocalDate(newer.endTime.toEpochMilli()), result.attributedNight)
+        assertEquals(newer.endTime.atZone(ZoneId.systemDefault()).toLocalDate(), result.attributedNight)
     }
 
     @Test

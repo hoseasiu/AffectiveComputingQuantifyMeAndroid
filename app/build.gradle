@@ -196,7 +196,6 @@ dependencies {
     // FlycoPageIndicator_Lib is vendored directly under java/com/flyco/pageindicator --
     // both the jcenter artifact and its jitpack build are dead. See CONTRIBUTING.md.
     implementation 'com.nineoldandroids:library:2.4.0'
-    implementation 'joda-time:joda-time:2.12.7'
     implementation 'com.makeramen:roundedimageview:2.3.0'
 
     // Health Connect (Phase 3 replacement for the dead Jawbone UP SDK)

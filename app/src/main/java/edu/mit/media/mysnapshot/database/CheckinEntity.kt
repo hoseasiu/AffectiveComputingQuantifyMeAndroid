@@ -4,7 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
-import org.joda.time.DateTime
+import java.time.OffsetDateTime
 
 @Entity(
     tableName = "checkins",
@@ -23,7 +23,7 @@ data class CheckinEntity(
     @ColumnInfo(name = "experiment_id")
     val experimentId: Int,
     @ColumnInfo(name = "checkin_date")
-    val checkinDate: DateTime,
+    val checkinDate: OffsetDateTime,
     @ColumnInfo(name = "did_follow_instructions")
     val didFollowInstructions: Int,
     val happiness: Int,

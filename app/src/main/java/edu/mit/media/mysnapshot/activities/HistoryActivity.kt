@@ -55,10 +55,9 @@ import edu.mit.media.mysnapshot.ui.theme.PageIndicatorDisabled
 import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
 import edu.mit.media.mysnapshot.viewmodel.HistoryEvent
 import edu.mit.media.mysnapshot.viewmodel.HistoryViewModel
-import org.joda.time.DateTime
-import org.joda.time.Days
-import org.joda.time.LocalDate
 import java.io.File
+import java.time.OffsetDateTime
+import java.time.temporal.ChronoUnit
 
 @AndroidEntryPoint
 class HistoryActivity : ComponentActivity() {
@@ -200,10 +199,10 @@ private fun ExperimentCard(
                     Column {
                         Text(text = experimentType.name, fontSize = 18.sp)
 
-                        val days = Days.daysBetween(
-                            LocalDate(experiment.startTime),
-                            LocalDate(experiment.endTime ?: DateTime.now())
-                        ).days
+                        val days = ChronoUnit.DAYS.between(
+                            experiment.startTime.toLocalDate(),
+                            (experiment.endTime ?: OffsetDateTime.now()).toLocalDate()
+                        )
                         val dayCountText = "$days Days" +
                             (if (experiment.isCancelled) " (Canceled)" else "") +
                             (if (experiment.isActive) " (Active)" else "")

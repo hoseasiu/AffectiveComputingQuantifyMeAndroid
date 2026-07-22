@@ -1,27 +1,23 @@
 package edu.mit.media.mysnapshot.database
 
 import androidx.room.TypeConverter
-import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 
 object Converters {
-    // `.withOffsetParsed()` makes the DB round-trip zone-faithful: without it, Joda renders
-    // the parsed result in the formatter's zone (the JVM default), discarding the offset
-    // embedded in the stored string, so reading back a value that was written with an
-    // explicit non-default zone would yield the correct instant but shifted date/time
-    // *components* (year/dayOfMonth/hourOfDay). Today every write goes through
-    // DateTime.now() (default zone) and every read derives its components via LocalDate(...)
-    // in that same default zone, so the components already match in practice; this flag just
-    // removes the latent trap for any future call site that persists a non-default zone.
-    private val dateTimeFormatter = ISODateTimeFormat.dateTimeNoMillis().withOffsetParsed()
+    // Unlike Joda-Time's DateTime.parse(), OffsetDateTime.parse() always reconstructs the
+    // offset embedded in the string rather than shifting to the JVM default zone, so this is
+    // zone-faithful without any extra flag. Nanos are stripped before formatting (below) so
+    // sub-second precision is never round-tripped, matching the previous dateTimeNoMillis().
+    private val dateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
     @TypeConverter
-    fun fromDateTime(value: DateTime?): String? {
-        return value?.toString(dateTimeFormatter)
+    fun fromDateTime(value: OffsetDateTime?): String? {
+        return value?.withNano(0)?.format(dateTimeFormatter)
     }
 
     @TypeConverter
-    fun toDateTime(value: String?): DateTime? {
-        return value?.let { DateTime.parse(it, dateTimeFormatter) }
+    fun toDateTime(value: String?): OffsetDateTime? {
+        return value?.let { OffsetDateTime.parse(it, dateTimeFormatter) }
     }
 }

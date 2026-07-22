@@ -147,7 +147,7 @@ class CheckinViewModel @Inject constructor(
         val timeFormat = DateTimeFormatter.ofPattern("h:mm a")
         val start = session.startTime.atZone(zone)
         val end = session.endTime.atZone(zone)
-        val night = session.attributedNight.toString("EEEE, MMM d")
+        val night = session.attributedNight.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
         return "We counted your sleep from ${start.format(timeFormat)} to ${end.format(timeFormat)} " +
             "as the night of $night (a night belongs to the day you woke up, not the day you fell asleep)."
     }

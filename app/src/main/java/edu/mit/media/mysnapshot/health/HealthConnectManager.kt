@@ -11,8 +11,8 @@ import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import dagger.hilt.android.qualifiers.ApplicationContext
-import org.joda.time.LocalDate
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -110,7 +110,7 @@ class HealthConnectManager @Inject constructor(
     }
 
     private fun LocalDate.startOfDayInstant(): Instant =
-        toDateTimeAtStartOfDay().toDate().toInstant()
+        atStartOfDay(ZoneId.systemDefault()).toInstant()
 
     /** Daily step count for each day in [startDate, endDateExclusive). */
     suspend fun getDailySteps(startDate: LocalDate, endDateExclusive: LocalDate): List<Float?> {
@@ -179,7 +179,7 @@ class HealthConnectManager @Inject constructor(
         val session = gateway.sleepSessions(start.startOfDayInstant(), end.startOfDayInstant())
             .maxByOrNull { it.endTime }
         return session?.let {
-            RecentSleepSession(it.startTime, it.endTime, LocalDate(it.endTime.toEpochMilli()))
+            RecentSleepSession(it.startTime, it.endTime, it.endTime.atZone(ZoneId.systemDefault()).toLocalDate())
         }
     }
 
@@ -193,7 +193,7 @@ class HealthConnectManager @Inject constructor(
             startDate.startOfDayInstant(), endDateExclusive.plusDays(1).startOfDayInstant()
         )
         return perDay(startDate, endDateExclusive) { date ->
-            val session = sessions.firstOrNull { LocalDate(it.endTime.toEpochMilli()) == date }
+            val session = sessions.firstOrNull { it.endTime.atZone(ZoneId.systemDefault()).toLocalDate() == date }
             session?.let(extract)
         }
     }

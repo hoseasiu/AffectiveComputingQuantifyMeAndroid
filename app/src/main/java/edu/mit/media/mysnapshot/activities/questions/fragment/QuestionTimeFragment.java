@@ -3,7 +3,7 @@ package edu.mit.media.mysnapshot.activities.questions.fragment;
 
 import android.view.ViewGroup;
 
-import org.joda.time.DateTime;
+import java.time.LocalTime;
 
 import edu.mit.media.mysnapshot.R;
 import edu.mit.media.mysnapshot.view.TimePickerView;
@@ -12,7 +12,7 @@ public abstract class QuestionTimeFragment extends QuestionFragment<String> {
 
     TimePickerView timePicker;
 
-    DateTime defaultTime;
+    LocalTime defaultTime;
 
 
     public QuestionTimeFragment() {
@@ -25,7 +25,7 @@ public abstract class QuestionTimeFragment extends QuestionFragment<String> {
         timePicker = (TimePickerView) root.findViewById(R.id.timePicker);
         timePicker.setListener(new TimePickerView.TimePickerListener() {
             @Override
-            public void onTimePicked(DateTime time) {
+            public void onTimePicked(LocalTime time) {
                 if (listener != null) {
                     listener.onSelected(getValue());
                 }
@@ -37,14 +37,14 @@ public abstract class QuestionTimeFragment extends QuestionFragment<String> {
 
     }
 
-    public void setTime(DateTime time) {
+    public void setTime(LocalTime time) {
         timePicker.setTime(time);
     }
 
 
     @Override
     public String getValue() {
-        DateTime time = timePicker.getTime();
+        LocalTime time = timePicker.getTime();
         return QuestionNotificationFragment.encode(time);
     }
 
@@ -53,7 +53,7 @@ public abstract class QuestionTimeFragment extends QuestionFragment<String> {
         super.setValue(dateString);
     }
 
-    public void setDefaultTime(DateTime defaultTime) {
+    public void setDefaultTime(LocalTime defaultTime) {
         this.defaultTime = defaultTime;
     }
 

@@ -3,7 +3,7 @@ package edu.mit.media.mysnapshot.data
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import edu.mit.media.mysnapshot.engine.ExperimentEngine
-import org.joda.time.LocalDate
+import java.time.LocalDate
 
 private val gson = Gson()
 

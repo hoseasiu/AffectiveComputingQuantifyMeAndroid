@@ -17,7 +17,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeoutOrNull
-import org.joda.time.DateTime
+import java.time.OffsetDateTime
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -98,7 +98,7 @@ class MainViewModelTest {
     fun route_activeNotCheckedInToday_forceCheckinFalse_emitsNavigateToCheckin() = runBlocking {
         val id = repository.createExperiment(ExperimentType.fromTypeKey("leisurehappiness"), 3, 3, 3).toInt()
         val entity = db.experimentDao().getById(id).first()!!
-        db.experimentDao().update(entity.copy(startTime = DateTime.now().minusDays(2)))
+        db.experimentDao().update(entity.copy(startTime = OffsetDateTime.now().minusDays(2)))
 
         viewModel.route(forceCheckin = false)
 
@@ -113,11 +113,11 @@ class MainViewModelTest {
     fun route_activeAlreadyCheckedInToday_forceCheckinFalse_emitsNavigateToInstructions() = runBlocking {
         val id = repository.createExperiment(ExperimentType.fromTypeKey("leisurehappiness"), 3, 3, 3).toInt()
         val entity = db.experimentDao().getById(id).first()!!
-        db.experimentDao().update(entity.copy(startTime = DateTime.now().minusDays(2)))
+        db.experimentDao().update(entity.copy(startTime = OffsetDateTime.now().minusDays(2)))
         db.checkinDao().insert(
             CheckinEntity(
                 experimentId = id,
-                checkinDate = DateTime.now(),
+                checkinDate = OffsetDateTime.now(),
                 didFollowInstructions = 3,
                 happiness = 3,
                 stress = 3,
