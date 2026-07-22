@@ -27,7 +27,7 @@ Other notable changes since forking:
 * **Privacy/manifest hardening**: no crash-reporting network calls, no unused permissions, backups disabled.
 * Broader automated test coverage: the original experiment engine is covered by characterization tests ported directly from the Django backend's algorithm, plus JUnit/Robolectric tests for the Room DAOs, repository, notification scheduler, and ViewModels.
 
-See [`AGENT_PLANS/MODERNIZE.md`](AGENT_PLANS/MODERNIZE.md) (not tracked in git — a local planning doc, present only if you're working from a checkout that has it) for the full phase-by-phase history of this rewrite, including what's still open.
+See [`AGENT_PLANS/MODERNIZE.md`](AGENT_PLANS/MODERNIZE.md) for the full phase-by-phase history of this rewrite, including what's still open.
 
 The accompanying (now-unused) backend can still be found here, for reference:
 https://github.com/mitmedialab/AffectiveComputingQuantifyMeDjango
