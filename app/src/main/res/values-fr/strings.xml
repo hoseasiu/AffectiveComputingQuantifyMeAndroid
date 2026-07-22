@@ -1,0 +1,137 @@
+<resources>
+    <string name="terms_text">
+<![CDATA[Cette application fait partie d\'un projet de recherche mené par l\'Affective Computing Group du MIT Media Lab. Cette application vise à vous aider à mener des auto-expériences pour découvrir comment vos comportements vous influencent, dans le cadre d\'un effort de recherche scientifique plus large visant à comprendre comment des personnes différentes réagissent différemment aux mêmes comportements.
+\n\n
+Au cours de l\'expérience, il vous sera demandé de modifier votre comportement. Cela peut parfois être inconfortable, car le changement demandé pourrait temporairement entraîner de moins bons résultats de bien-être que pendant d\'autres périodes de l\'expérience. Vous êtes libre d\'abandonner l\'expérience à tout moment.
+\n\n
+Cette application ne remplace pas un avis médical professionnel ni le bon sens.
+\n\n
+Merci d\'envoyer toute question, commentaire ou rapport de bug à sataylor@mit.edu.
+\n\n
+En cliquant sur "J\'accepte", vous reconnaissez que cette application fonctionne entièrement sur votre appareil : vos réponses ainsi que les données de pas/sommeil lues depuis Health Connect sont stockées localement et ne sont jamais envoyées où que ce soit.
+]]>
+    </string>
+
+    <string name="race">Origine ethnique</string>
+    <string-array name="races">
+        <item>Amérindien ou autochtone de l\'Alaska</item>
+        <item>Hawaïen ou autre insulaire du Pacifique</item>
+        <item>Asiatique ou américain d\'origine asiatique</item>
+        <item>Noir ou afro-américain</item>
+        <item>Hispanique ou latino</item>
+        <item>Blanc non hispanique</item>
+        <item>Autre</item>
+    </string-array>
+
+    <string-array name="activity">
+        <item>Une demi-heure</item>
+        <item>Une heure</item>
+        <item>Trois heures</item>
+        <item>Huit heures</item>
+        <item>Douze heures</item>
+    </string-array>
+
+    <string-array name="leisurelabels">
+        <item>Aucun</item>
+        <item>15 minutes</item>
+        <item>30 minutes</item>
+        <item>45 minutes</item>
+        <item>1 heure</item>
+        <item>1,5 heure</item>
+        <item>2 heures</item>
+        <item>2,5 heures</item>
+        <item>3 heures</item>
+        <item>4 heures</item>
+        <item>5 heures ou plus</item>
+    </string-array>
+
+    <string name="notification_title">Notification</string>
+    <string name="notification_content">Notification</string>
+    <string name="alarm_title">Alarme</string>
+    <string name="adherence_nudge_title">Continuez ainsi !</string>
+
+    <string name="intro_experiment_text"><![CDATA[Nous allons vous guider à travers des expériences pour que vous découvriez ce qui fonctionne pour <i>vous</i>.]]></string>
+    <string name="sleepvariability_intro_text"><![CDATA[
+        Tout le monde a entendu dire qu\'un horaire de sommeil régulier est important.\n\n
+        Mais comment un horaire de sommeil irrégulier affecte-t-il réellement votre vie ?\n\n
+        Nous vous aiderons à découvrir combien de stress vous pouvez soulager en vous couchant à la même heure chaque soir.
+    ]]></string>
+    <string name="sleepduration_intro_text"><![CDATA[
+        Dormir suffisamment est très important pour être heureux et en bonne santé.\n\n
+        Mais savez-vous exactement de combien de sommeil vous avez besoin pour être au sommet de votre productivité ?\n\n
+        Nous vous aiderons à découvrir combien de sommeil il vous faut pour être le plus productif possible.
+    ]]></string>
+    <string name="steps_intro_text"><![CDATA[
+        Se lever et rester actif aide dans tous les aspects de la vie.\n\n
+        Mais à partir de quand est-ce trop ?\n\n
+        Nous vous aiderons à découvrir quelle quantité d\'activité est la meilleure pour bien dormir la nuit.
+    ]]></string>
+    <string name="leisure_intro_text"><![CDATA[
+        Le temps libre ! Tout le monde adore ça.\n\n
+        Trop peu, et vous devenez fou. Trop, et vous ne faites rien. Mais quelle est la bonne quantité pour rester heureux ?\n\n
+        Nous vous aiderons à mesurer combien de \"temps pour vous\" il vous faut chaque jour pour être au meilleur de vous-même.
+    ]]></string>
+    <string name="exercise_stress_intro_text"><![CDATA[
+        L\'exercice est un réducteur de stress bien connu, mais le corps de chacun réagit différemment.\n\n
+        Combien de minutes d\'exercice faut-il réellement pour faire baisser votre niveau de stress ?\n\n
+        Nous vous aiderons à trouver votre propre équilibre.
+    ]]></string>
+    <string name="steps_happiness_intro_text"><![CDATA[
+        Se lever et rester actif aide dans tous les aspects de la vie.\n\n
+        Mais à partir de quand est-ce trop ?\n\n
+        Nous vous aiderons à découvrir quelle quantité d\'activité vous rend le plus heureux.
+    ]]></string>
+    <string name="leisure_productivity_intro_text"><![CDATA[
+        Le temps libre ! Tout le monde adore ça.\n\n
+        Trop peu, et vous vous épuisez. Trop, et vous ne faites rien. Mais quelle est la bonne quantité pour rester productif ?\n\n
+        Nous vous aiderons à mesurer combien de \"temps pour vous\" il vous faut chaque jour pour accomplir votre meilleur travail.
+    ]]></string>
+
+    <string-array name="stage_instructions">
+        <item>Nous déterminons votre routine normale. Merci de garder vos habitudes de sommeil et d\'activité aussi routinières que possible.</item>
+        <item>Commençons par un changement simple dans votre routine pour voir ce qui se passe.</item>
+        <item>À mi-chemin ! Essayons un autre changement pour en voir les effets.</item>
+        <item>Presque terminé ! Encore ce dernier changement de routine, et nous pourrons calculer tout ce dont nous avons besoin !</item>
+    </string-array>
+
+    <string name="restart_reason_missed_days"><![CDATA[
+        Vous avez manqué trop de check-ins ou de relevés du capteur pendant cette étape, nous n\'avons donc pas assez de données pour faire confiance au résultat. Nous devons recommencer cette étape.
+    ]]></string>
+    <string name="restart_reason_target_zone_unreachable"><![CDATA[
+        Vos derniers jours sont trop souvent sortis de la zone cible de cette étape pour obtenir un résultat fiable dans le temps restant. Nous devons recommencer cette étape afin d\'obtenir suffisamment de jours réellement dans la cible.
+    ]]></string>
+    <string name="restart_reason_generic"><![CDATA[
+        Oups ! On dirait que nous n\'avons pas pu recueillir assez de données pour cette étape, et nous devons la refaire.
+    ]]></string>
+
+    <!-- Daily check-in wizard (ExperimentCheckinActivity/CheckinViewModel) -->
+    <string name="checkin_title">Suivi quotidien</string>
+    <string name="checkin_intro_text">Nous allons vous poser quelques questions rapides sur votre journée, puis nous vous dirons ce que vous devez faire pour votre expérience.\n\nVous n\'avez besoin de faire le point qu\'une fois par jour !</string>
+    <string name="checkin_sleep_night_explanation">Nous avons compté votre sommeil de %1$s à %2$s comme la nuit du %3$s (une nuit appartient au jour où vous vous êtes réveillé, pas au jour où vous vous êtes endormi).</string>
+    <string name="checkin_open_health_connect_button">Ouvrir Health Connect</string>
+    <string name="checkin_open_health_connect_description">Ouvrir l\'application Health Connect</string>
+    <string name="checkin_continue">Continuer</string>
+    <string name="checkin_generating_instructions">Génération des instructions du jour…</string>
+    <string name="checkin_generating_instructions_description">Génération des instructions du jour</string>
+
+    <string name="checkin_step_of_total_description">Étape %1$d sur %2$d</string>
+    <string name="checkin_step_current_suffix">, étape actuelle</string>
+    <string name="checkin_step_unavailable_suffix">, pas encore disponible</string>
+
+    <string name="checkin_question_did_follow_directions">Comment avez-vous suivi les instructions de l\'expérience ?</string>
+    <string name="checkin_question_leisure">Combien de temps libre avez-vous eu au cours des dernières 24 heures ?</string>
+    <string name="checkin_question_happy">À quel point avez-vous été heureux au cours des dernières 24 heures ?</string>
+    <string name="checkin_question_stress">À quel point avez-vous été stressé au cours des dernières 24 heures ?</string>
+    <string name="checkin_question_productivity">À quel point avez-vous été productif au cours des dernières 24 heures ?</string>
+
+    <string name="checkin_scale_label_poor">Mauvais</string>
+    <string name="checkin_scale_label_great">Excellent</string>
+    <string name="checkin_scale_label_not_at_all">Pas du tout</string>
+    <string name="checkin_scale_label_extremely">Extrêmement</string>
+
+    <string name="checkin_scale_option_description">%1$s Option %2$d sur %3$d</string>
+
+    <string name="checkin_leisure_select_option_label">Veuillez sélectionner une option</string>
+    <string name="checkin_leisure_select_description">%1$s. Veuillez sélectionner une option. Actuellement %2$s</string>
+
+</resources>

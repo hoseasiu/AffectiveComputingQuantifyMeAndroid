@@ -40,6 +40,7 @@ on what — it is derived live, never stored here.
 | 8 | Real unit-test suite (147 tests) + `androidTest` source set | PR #36 (#21) |
 | 8 | Dead `UserProfileEntity`/`UserProfileDao` deleted | PR #30 (#24) |
 | — | Fresh-install black screen; config Continue NPE; date-picker crash | PR #14, #16 |
+| 7.4 | Hardcoded check-in wizard strings externalized to `strings.xml`; French/Spanish locales added | (#26) |
 
 ### Still open
 
@@ -52,7 +53,6 @@ on what — it is derived live, never stored here.
 | 7.1 | Accessibility audit for every screen beyond check-in | #20 |
 | 7.2 | Remove portrait-only lock; rotation + tablet layouts | #25 |
 | 7.3 | Support multiple concurrent experiments | #27 |
-| 7.4 | Localize copy; externalize hardcoded Compose strings | #26 |
 | 7.5 | More built-in experiments recombining existing signals | #28 (PR #38 open) |
 | 9 | User-defined custom experiment signals (epic) | #31–#35 |
 | 10 | Emulator in CI so `androidTest` actually runs | *(no issue yet)* |
@@ -100,8 +100,11 @@ Play listing.
 - **7.2 Rotation** — 13 `configChanges` + `screenOrientation="portrait"` overrides were
   workarounds for the missing ViewModel layer. **Depends on §2.2 / #19** (#25).
 - **7.3 Concurrency** — single-active-experiment model is enforced today (#27).
-- **7.4 Localization** — English-only; the Compose check-in migration added more hardcoded
-  Kotlin strings. Blocked on target locales (product input) (#26).
+- **7.4 Localization** — hardcoded Compose check-in wizard strings (and the ViewModel-built
+  intro/sleep-explanation text) are now in `strings.xml`; French (`values-fr`) and Spanish
+  (`values-es`) translations cover the full string table (#26). Adding further locales is now
+  just a translation exercise — no more code changes needed unless new hardcoded copy is
+  introduced elsewhere.
 - **7.5 Experiment types** — data-driven via `assets/experiment_types.json` +
   `ExperimentTypeRegistry`. A type reusing existing signals is config + art only; a genuinely
   new signal needs a new `SignalSource` and a fetch implementation.

@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -208,9 +209,9 @@ private fun CheckinScreen(
                     )
                     CheckinStep.DID_FOLLOW_DIRECTIONS -> RadioScaleStep(
                         icon = R.drawable.icon_settings_self_effectiveness,
-                        question = "How did you do with following the experiment's instructions?",
-                        leftLabel = "Poor",
-                        rightLabel = "Great",
+                        question = stringResource(R.string.checkin_question_did_follow_directions),
+                        leftLabel = stringResource(R.string.checkin_scale_label_poor),
+                        rightLabel = stringResource(R.string.checkin_scale_label_great),
                         leftColor = RadioRed,
                         rightColor = RadioGreen,
                         selected = state.didFollowDirections,
@@ -218,15 +219,15 @@ private fun CheckinScreen(
                     )
                     CheckinStep.LEISURE -> LeisureStep(
                         icon = R.drawable.icon_settings_leisure,
-                        question = "How much leisure time did you have in the past 24 hours?",
+                        question = stringResource(R.string.checkin_question_leisure),
                         selected = state.leisureValue,
                         onSelect = onLeisureSelected
                     )
                     CheckinStep.HAPPY -> RadioScaleStep(
                         icon = R.drawable.icon_settings_happiness,
-                        question = "How happy were you in the past 24 hours?",
-                        leftLabel = "Not at all",
-                        rightLabel = "Extremely",
+                        question = stringResource(R.string.checkin_question_happy),
+                        leftLabel = stringResource(R.string.checkin_scale_label_not_at_all),
+                        rightLabel = stringResource(R.string.checkin_scale_label_extremely),
                         leftColor = RadioRed,
                         rightColor = RadioGreen,
                         selected = state.happiness,
@@ -234,9 +235,9 @@ private fun CheckinScreen(
                     )
                     CheckinStep.STRESS -> RadioScaleStep(
                         icon = R.drawable.icon_settings_stress,
-                        question = "How stressed were you in the past 24 hours?",
-                        leftLabel = "Not at all",
-                        rightLabel = "Extremely",
+                        question = stringResource(R.string.checkin_question_stress),
+                        leftLabel = stringResource(R.string.checkin_scale_label_not_at_all),
+                        rightLabel = stringResource(R.string.checkin_scale_label_extremely),
                         // Inverted vs. the other three scales: low stress reads as "good" (green),
                         // matching the legacy `stress.init(..., radio_green, radio_red, 7)` call.
                         leftColor = RadioGreen,
@@ -246,9 +247,9 @@ private fun CheckinScreen(
                     )
                     CheckinStep.PRODUCTIVITY -> RadioScaleStep(
                         icon = R.drawable.icon_settings_productivity,
-                        question = "How productive were you in the past 24 hours?",
-                        leftLabel = "Not at all",
-                        rightLabel = "Extremely",
+                        question = stringResource(R.string.checkin_question_productivity),
+                        leftLabel = stringResource(R.string.checkin_scale_label_not_at_all),
+                        rightLabel = stringResource(R.string.checkin_scale_label_extremely),
                         leftColor = RadioRed,
                         rightColor = RadioGreen,
                         selected = state.productivity,
@@ -266,11 +267,12 @@ private fun CheckinScreen(
 
 @Composable
 private fun SubmittingOverlay() {
+    val description = stringResource(R.string.checkin_generating_instructions_description)
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.4f))
-            .semantics { contentDescription = "Generating daily instructions" },
+            .semantics { contentDescription = description },
         contentAlignment = Alignment.Center
     ) {
         Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp), color = White) {
@@ -280,7 +282,7 @@ private fun SubmittingOverlay() {
             ) {
                 CircularProgressIndicator()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Generating daily instructions...")
+                Text(stringResource(R.string.checkin_generating_instructions))
             }
         }
     }
@@ -300,12 +302,14 @@ private fun StepDotsIndicator(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val currentSuffix = stringResource(R.string.checkin_step_current_suffix)
+        val unavailableSuffix = stringResource(R.string.checkin_step_unavailable_suffix)
         for (i in 0 until totalSteps) {
             val revealed = i < revealedSteps
             val isCurrent = i == currentStep
-            val description = "Step ${i + 1} of $totalSteps" + when {
-                isCurrent -> ", current step"
-                !revealed -> ", not yet available"
+            val description = stringResource(R.string.checkin_step_of_total_description, i + 1, totalSteps) + when {
+                isCurrent -> currentSuffix
+                !revealed -> unavailableSuffix
                 else -> ""
             }
 
@@ -361,7 +365,7 @@ private fun IntroStep(
                 .padding(bottom = 16.dp)
         )
         Text(
-            text = "Daily Check In",
+            text = stringResource(R.string.checkin_title),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -375,20 +379,21 @@ private fun IntroStep(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 24.dp)
         )
+        val openHealthConnectDescription = stringResource(R.string.checkin_open_health_connect_description)
         Button(
             onClick = onOpenHealthConnect,
             modifier = Modifier
                 .defaultMinSize(minHeight = 48.dp)
-                .semantics { contentDescription = "Open the Health Connect app" }
+                .semantics { contentDescription = openHealthConnectDescription }
         ) {
-            Text("Open Health Connect")
+            Text(stringResource(R.string.checkin_open_health_connect_button))
         }
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = onContinue,
             modifier = Modifier.defaultMinSize(minHeight = 48.dp)
         ) {
-            Text("Continue")
+            Text(stringResource(R.string.checkin_continue))
         }
     }
 }
@@ -440,7 +445,7 @@ private fun RadioScaleStep(
                 ScaleButton(
                     color = scaleButtonColor(i, scaleSize, leftColor, rightColor),
                     selected = selected == i,
-                    description = "$question Option ${i + 1} of $scaleSize" +
+                    description = stringResource(R.string.checkin_scale_option_description, question, i + 1, scaleSize) +
                         when (i) {
                             0 -> ", $leftLabel"
                             scaleSize - 1 -> ", $rightLabel"
@@ -532,6 +537,7 @@ private fun LeisureStep(
         ?.let { value -> values.indexOf(value).takeIf { it >= 0 } }
         ?.let { labels[it] }
         ?: ""
+    val leisureSelectDescription = stringResource(R.string.checkin_leisure_select_description, question, selectedLabel)
 
     Column(
         modifier = Modifier
@@ -566,12 +572,12 @@ private fun LeisureStep(
                 value = selectedLabel,
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Please Select an Option") },
+                label = { Text(stringResource(R.string.checkin_leisure_select_option_label)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier
                     .menuAnchor()
                     .fillMaxWidth()
-                    .semantics { contentDescription = "$question. Please Select an Option. Currently $selectedLabel" }
+                    .semantics { contentDescription = leisureSelectDescription }
             )
             ExposedDropdownMenu(
                 expanded = expanded,

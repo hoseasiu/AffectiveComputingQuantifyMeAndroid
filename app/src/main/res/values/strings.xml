@@ -143,5 +143,34 @@ By clicking "I agree" you acknowledge that this app runs entirely on your device
         <item>TBD</item>
     </string-array>
 
+    <!-- Daily check-in wizard (ExperimentCheckinActivity/CheckinViewModel) -->
+    <string name="checkin_title">Daily Check In</string>
+    <string name="checkin_intro_text">We\'re going to ask you a couple quick questions about your day, then we\'ll let you know what you should do for your experiment.\n\nYou only need to check in once a day!</string>
+    <string name="checkin_sleep_night_explanation">We counted your sleep from %1$s to %2$s as the night of %3$s (a night belongs to the day you woke up, not the day you fell asleep).</string>
+    <string name="checkin_open_health_connect_button">Open Health Connect</string>
+    <string name="checkin_open_health_connect_description">Open the Health Connect app</string>
+    <string name="checkin_continue">Continue</string>
+    <string name="checkin_generating_instructions">Generating daily instructions…</string>
+    <string name="checkin_generating_instructions_description">Generating daily instructions</string>
+
+    <string name="checkin_step_of_total_description">Step %1$d of %2$d</string>
+    <string name="checkin_step_current_suffix">, current step</string>
+    <string name="checkin_step_unavailable_suffix">, not yet available</string>
+
+    <string name="checkin_question_did_follow_directions">How did you do with following the experiment\'s instructions?</string>
+    <string name="checkin_question_leisure">How much leisure time did you have in the past 24 hours?</string>
+    <string name="checkin_question_happy">How happy were you in the past 24 hours?</string>
+    <string name="checkin_question_stress">How stressed were you in the past 24 hours?</string>
+    <string name="checkin_question_productivity">How productive were you in the past 24 hours?</string>
+
+    <string name="checkin_scale_label_poor">Poor</string>
+    <string name="checkin_scale_label_great">Great</string>
+    <string name="checkin_scale_label_not_at_all">Not at all</string>
+    <string name="checkin_scale_label_extremely">Extremely</string>
+
+    <string name="checkin_scale_option_description">%1$s Option %2$d of %3$d</string>
+
+    <string name="checkin_leisure_select_option_label">Please Select an Option</string>
+    <string name="checkin_leisure_select_description">%1$s. Please Select an Option. Currently %2$s</string>
 
 </resources>
