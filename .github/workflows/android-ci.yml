@@ -18,21 +18,6 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # No backend is reachable from CI (and Phase 2 of AGENT_PLANS/MODERNIZE.md removes
-      # this dependency entirely) -- these are placeholders sufficient to compile, matching
-      # app/base_url.xml.template. See CONTRIBUTING.md.
-      - name: Write local config
-        run: |
-          mkdir -p app/src/main/res/values
-          cat > app/src/main/res/values/base_url.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <string name="BASE_URL">http://10.0.2.2:8000/</string>
-              <string name="ACRA_USER">ci</string>
-              <string name="ACRA_PASSWORD">ci</string>
-          </resources>
-          EOF
-
       # assembleRelease falls back to debug signing when no keystore.properties is present
       # (see app/build.gradle); generate the well-known default debug keystore so that
       # fallback has a file to sign with on a fresh CI runner.
