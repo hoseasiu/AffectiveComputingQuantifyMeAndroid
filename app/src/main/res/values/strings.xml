@@ -106,6 +106,11 @@ By clicking "I agree" you acknowledge that this app runs entirely on your device
         Too little, and you go insane. Too much, and you get nothing done. But how much is right to keep you happy?\n\n
         We\'ll help you measure just how much "you time" you need each day to stay at your best.
     ]]></string>
+    <string name="exercise_stress_intro_text"><![CDATA[
+        Exercise is a well-known stress reliever, but everyone\'s body responds differently.\n\n
+        How many minutes of exercise does it actually take to bring your stress level down?\n\n
+        We\'ll help you find your own sweet spot.
+    ]]></string>
 
     <string-array name="stage_instructions">
         <item>We\'re figuring out your normal routine. Please keep your sleep and activity habits as routine as possible.</item>

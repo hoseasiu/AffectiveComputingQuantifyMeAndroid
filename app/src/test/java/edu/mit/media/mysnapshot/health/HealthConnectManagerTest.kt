@@ -18,7 +18,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 
 /**
- * Coverage for [HealthConnectManager]'s four signal-extraction functions
+ * Coverage for [HealthConnectManager]'s signal-extraction functions
  * (AGENT_PLANS/IMPROVEMENTS.md item 5, [issue #21](https://github.com/hoseasiu/AffectiveComputingQuantifyMeAndroid/issues/21)),
  * exercised against a hand-written [FakeHealthConnectGateway] rather than a real Health Connect
  * client -- see [HealthConnectGateway]'s doc for why the seam sits below the client rather than
@@ -113,6 +113,59 @@ class HealthConnectManagerTest {
         val today = LocalDate.now()
 
         val result = manager.getDailySteps(today, today.plusDays(3))
+
+        assertEquals(listOf(null, null, null), result)
+    }
+
+    // ---- getExerciseMinutes ---------------------------------------------------------------
+
+    @Test
+    fun getExerciseMinutes_returnsPerDayMinutesAndNullForDaysWithNoData() = runBlocking {
+        val today = LocalDate.now()
+        manager.testGatewayOverride = FakeHealthConnectGateway(
+            exerciseMinutesFn = { start, _ ->
+                when (LocalDate(start.toEpochMilli())) {
+                    today -> 20f
+                    today.plusDays(1) -> 45f
+                    else -> null
+                }
+            }
+        )
+
+        val result = manager.getExerciseMinutes(today, today.plusDays(3))
+
+        assertEquals(listOf(20f, 45f, null), result)
+    }
+
+    @Test
+    fun getExerciseMinutes_queriesEachDayAsASeparateMidnightToMidnightWindow() = runBlocking {
+        val today = LocalDate.now()
+        val gateway = FakeHealthConnectGateway(exerciseMinutesFn = { _, _ -> 1f })
+        manager.testGatewayOverride = gateway
+
+        manager.getExerciseMinutes(today, today.plusDays(2))
+
+        assertEquals(2, gateway.totalExerciseMinutesQueries.size)
+        assertEquals(today.startOfDayInstant(), gateway.totalExerciseMinutesQueries[0].first)
+        assertEquals(today.plusDays(1).startOfDayInstant(), gateway.totalExerciseMinutesQueries[0].second)
+        assertEquals(today.plusDays(1).startOfDayInstant(), gateway.totalExerciseMinutesQueries[1].first)
+        assertEquals(today.plusDays(2).startOfDayInstant(), gateway.totalExerciseMinutesQueries[1].second)
+    }
+
+    @Test
+    fun getExerciseMinutes_emptyRange_returnsEmptyList() = runBlocking {
+        val today = LocalDate.now()
+        manager.testGatewayOverride = FakeHealthConnectGateway(exerciseMinutesFn = { _, _ -> 42f })
+
+        assertTrue(manager.getExerciseMinutes(today, today).isEmpty())
+    }
+
+    @Test
+    @Config(sdk = [33])
+    fun getExerciseMinutes_sdkUnavailableAndNoOverride_returnsNullForEveryDay() = runBlocking {
+        val today = LocalDate.now()
+
+        val result = manager.getExerciseMinutes(today, today.plusDays(3))
 
         assertEquals(listOf(null, null, null), result)
     }

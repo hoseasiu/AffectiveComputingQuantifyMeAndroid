@@ -57,6 +57,8 @@ object ExperimentDataProvider {
                 healthConnect.getDailySteps(startDate, endDateExclusive)
             SignalSource.HEALTH_CONNECT_SLEEP_EFFICIENCY ->
                 healthConnect.getSleepEfficiency(startDate, endDateExclusive)
+            SignalSource.HEALTH_CONNECT_EXERCISE_MINUTES ->
+                healthConnect.getExerciseMinutes(startDate, endDateExclusive)
         }
     }
 }

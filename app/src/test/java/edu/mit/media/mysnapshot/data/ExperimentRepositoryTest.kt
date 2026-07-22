@@ -36,8 +36,8 @@ import java.time.ZoneOffset
  * Most of this file is scoped to [ExperimentType.fromTypeKey("leisurehappiness")], whose
  * `getInputs`/`getOutputs` are 100% checkin-backed (see `ExperimentDataProvider.kt`) and never
  * call [HealthConnectManager] -- letting most tests stay agnostic to Health Connect entirely.
- * The three Health-Connect-backed types (`sleepvariabilitystress`, `sleepdurationproductivity`,
- * `stepssleepefficiency`) are separately covered further down, against
+ * The Health-Connect-backed types (`sleepvariabilitystress`, `sleepdurationproductivity`,
+ * `stepssleepefficiency`, `exercisestress`) are separately covered further down, against
  * [HealthConnectManager.testGatewayOverride] set to a [FakeHealthConnectGateway] -- see
  * [issue #21](https://github.com/hoseasiu/AffectiveComputingQuantifyMeAndroid/issues/21).
  */
@@ -458,5 +458,40 @@ class ExperimentRepositoryTest {
         assertTrue("stage 0 with only 3 elapsed days must not end yet", !outcome.newStage)
         assertEquals(0, outcome.currentStage)
         assertTrue("sleep session data must have been queried from Health Connect", gateway.sleepSessionsQueries.isNotEmpty())
+    }
+
+    @Test
+    fun submitCheckin_baselineComplete_exerciseStress_usesHealthConnectExerciseMinutesAsInput() = runBlocking {
+        val today = LocalDate.now()
+        val type = ExperimentType.fromTypeKey("exercisestress")
+        val id = repository.createExperiment(type, 3, 3, 3).toInt()
+
+        val original = readState(id)
+        val backdated = original.withStageDates(0, today.minusDays(7), today)
+        val (datesJson, targetsJson, restartJson) = backdated.toJson()
+        val entity = db.experimentDao().getById(id).first()!!
+        db.experimentDao().update(
+            entity.copy(stageDatesJson = datesJson, stageTargetValuesJson = targetsJson, stageRestartCountJson = restartJson)
+        )
+
+        // Input (exercise minutes) comes from Health Connect, aligned to its own calendar day.
+        healthConnect.testGatewayOverride = FakeHealthConnectGateway(exerciseMinutesFn = { _, _ -> 25f })
+
+        // Output (stress) is still checkin-backed, so it keeps the +1-day-shift quirk.
+        for (offset in 6 downTo 1) {
+            db.checkinDao().insert(checkinAt(id, today.minusDays(offset)))
+        }
+
+        val outcome = repository.submitCheckin(
+            id, didFollowInstructions = 1, happiness = 5, stress = 2, productivity = 4, leisureTime = 60
+        )
+
+        val expectedTargets = ExperimentEngine.setStageTargets(
+            List(7) { 25f }, useVariability = false, type.ranges, type.rangeSize
+        )
+
+        assertTrue("a full 7-day baseline fed by Health Connect exercise minutes must end the stage", outcome.newStage)
+        assertEquals(1, outcome.currentStage)
+        assertEquals(expectedTargets.stageTargetValues[1], outcome.target)
     }
 }

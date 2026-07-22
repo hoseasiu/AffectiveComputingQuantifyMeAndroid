@@ -66,5 +66,22 @@
     "instructionTemplate": "Try to walk {value} steps today",
     "resultTemplate": "Try to walk {value} steps every day",
     "targetTemplate": "{value} Steps"
+  },
+  {
+    "typeKey": "exercisestress",
+    "name": "How does exercise affect my stress level?",
+    "ranges": { "under": 10, "n1": 20, "n2": 30, "n3": 45, "over": 60 },
+    "rangeSize": 10,
+    "stableRange": 3,
+    "useVariability": false,
+    "shouldMinimizeResult": true,
+    "usesSleepData": false,
+    "inputSignal": "HEALTH_CONNECT_EXERCISE_MINUTES",
+    "outputSignal": "CHECKIN_STRESS",
+    "targetFormatKind": "RAW_NUMBER",
+    "resultFormatKind": "RAW_NUMBER",
+    "instructionTemplate": "Try to exercise {value} minutes today",
+    "resultTemplate": "Try to exercise {value} minutes each day",
+    "targetTemplate": "{value} Minutes"
   }
 ]
