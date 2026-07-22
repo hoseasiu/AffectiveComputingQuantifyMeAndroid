@@ -79,6 +79,28 @@ android {
         // item 5 -- broadening JVM unit-test coverage past the engine module).
         unitTests {
             includeAndroidResources = true
+
+            all { test ->
+                // A hung test used to block the suite *forever*. JUnit 4 has no global per-test
+                // timeout (unlike JUnit 5's junit.jupiter.execution.timeout.default) and Gradle
+                // waits indefinitely by default, so a single coroutine awaiting an event that is
+                // never sent stalls the whole build with the worker JVM at 0% CPU -- which reads
+                // as "the tests are slow" rather than "the tests are stuck". This happened for
+                // real: see ExperimentCompleteViewModelTest's resume test, fixed in #40.
+                //
+                // The suite executes in ~25s, so 10 minutes is far above any legitimate run
+                // (a full cold build plus tests is under 2 minutes) while still bounding a hang.
+                test.timeout = java.time.Duration.ofMinutes(10)
+
+                test.testLogging {
+                    // "started" is what makes a timeout *diagnosable*: when the task is killed,
+                    // the last STARTED line names the test that hung. Without it a timeout tells
+                    // you only that something stalled, and finding the culprit needs a jstack of
+                    // the test worker. ~175 extra lines is a cheap price for that.
+                    events "started", "failed"
+                    exceptionFormat "full"
+                }
+            }
         }
     }
 
