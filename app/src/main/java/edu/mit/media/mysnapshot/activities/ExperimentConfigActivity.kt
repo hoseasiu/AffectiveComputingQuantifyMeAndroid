@@ -47,8 +47,8 @@ class ExperimentConfigActivity : QuestionActivity() {
         textFragment = QuestionTextFragment()
         textFragment.setLayout(QuestionFragment.Layout(experimentType.iconId, "Configuration"))
         textFragment.init("First, we need to ask you some questions to help us make your experiment.")
-        textFragment.setListener(object : QuestionListener<Int>() {
-            override fun onSelected(value: Int) {
+        textFragment.setListener(object : QuestionListener<Void>() {
+            override fun onSelected(value: Void?) {
                 onPageComplete()
             }
         })
