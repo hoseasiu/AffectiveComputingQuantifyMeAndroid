@@ -23,6 +23,12 @@ android {
 
         versionCode 5
         versionName "0.0.3"
+
+        // AGENT_PLANS/IMPROVEMENTS.md item 5 / issue #21: first androidTest source set --
+        // instrumentation + Compose UI tests need a Hilt-aware test Application so
+        // @AndroidEntryPoint activities (e.g. ExperimentCheckinActivity) can be launched
+        // directly. See androidTest/.../HiltTestRunner.kt.
+        testInstrumentationRunner "edu.mit.media.mysnapshot.HiltTestRunner"
     }
 
     signingConfigs {
@@ -100,6 +106,18 @@ dependencies {
     testImplementation "androidx.room:room-testing:2.6.1"
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
     testImplementation 'androidx.work:work-testing:2.9.1'
+
+    // Instrumentation + Compose UI tests (AGENT_PLANS/IMPROVEMENTS.md item 5, issue #21) --
+    // first androidTest source set, run on-device/emulator only (not part of testDebugUnitTest).
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    androidTestImplementation platform('androidx.compose:compose-bom:2024.09.00')
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
+    androidTestImplementation 'com.google.dagger:hilt-android-testing:2.50'
+    kaptAndroidTest 'com.google.dagger:hilt-compiler:2.50'
 
     // Kotlin
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.23'

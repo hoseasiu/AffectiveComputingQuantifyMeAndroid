@@ -17,6 +17,44 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * Everything [HealthConnectManager] needs from a real [HealthConnectClient], narrowed down to
+ * plain Kotlin return types. This is the test seam called for in AGENT_PLANS/IMPROVEMENTS.md
+ * item 5: [HealthConnectClient.aggregate] and [HealthConnectClient.readRecords] return
+ * [androidx.health.connect.client.aggregate.AggregationResult] /
+ * [androidx.health.connect.client.response.ReadRecordsResponse], both of which have a
+ * library-`internal` constructor, so a fake can't produce them directly -- but it can implement
+ * this interface and hand back the plain values those responses would have wrapped.
+ */
+internal interface HealthConnectGateway {
+    suspend fun totalSteps(start: Instant, endExclusive: Instant): Float?
+    suspend fun sleepSessions(start: Instant, endExclusive: Instant): List<SleepSessionRecord>
+    suspend fun grantedPermissions(): Set<String>
+}
+
+private class RealHealthConnectGateway(private val client: HealthConnectClient) : HealthConnectGateway {
+    override suspend fun totalSteps(start: Instant, endExclusive: Instant): Float? {
+        val response = client.aggregate(
+            AggregateRequest(
+                metrics = setOf(StepsRecord.COUNT_TOTAL),
+                timeRangeFilter = TimeRangeFilter.between(start, endExclusive)
+            )
+        )
+        return response[StepsRecord.COUNT_TOTAL]?.toFloat()
+    }
+
+    override suspend fun sleepSessions(start: Instant, endExclusive: Instant): List<SleepSessionRecord> =
+        client.readRecords(
+            ReadRecordsRequest(
+                recordType = SleepSessionRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(start, endExclusive)
+            )
+        ).records
+
+    override suspend fun grantedPermissions(): Set<String> =
+        client.permissionController.getGrantedPermissions()
+}
+
+/**
  * Thin wrapper around the Health Connect client -- Phase 3 replacement for the dead Jawbone
  * UP SDK (AGENT_PLANS/MODERNIZE.md). Exposes only the four signals the experiment engine
  * needs (daily step count, nightly sleep duration, sleep efficiency %, sleep start time),
@@ -40,13 +78,21 @@ class HealthConnectManager @Inject constructor(
 
     fun permissionRequestContract() = PermissionController.createRequestPermissionResultContract()
 
-    private val client: HealthConnectClient? by lazy {
-        if (isAvailable()) HealthConnectClient.getOrCreate(context) else null
+    /**
+     * Test seam: set before any suspend function below is called (the real lookup is cached in
+     * the `by lazy` below), a fake [HealthConnectGateway] bypasses both `isAvailable()` and the
+     * real [HealthConnectClient] entirely -- see [HealthConnectGateway]'s doc for why the fake
+     * targets this interface rather than [HealthConnectClient] itself.
+     */
+    internal var testGatewayOverride: HealthConnectGateway? = null
+
+    private val gateway: HealthConnectGateway? by lazy {
+        testGatewayOverride ?: if (isAvailable()) RealHealthConnectGateway(HealthConnectClient.getOrCreate(context)) else null
     }
 
     suspend fun hasAllPermissions(): Boolean {
-        val client = client ?: return false
-        return client.permissionController.getGrantedPermissions().containsAll(PERMISSIONS)
+        val gateway = gateway ?: return false
+        return gateway.grantedPermissions().containsAll(PERMISSIONS)
     }
 
     private fun LocalDate.startOfDayInstant(): Instant =
@@ -54,17 +100,9 @@ class HealthConnectManager @Inject constructor(
 
     /** Daily step count for each day in [startDate, endDateExclusive). */
     suspend fun getDailySteps(startDate: LocalDate, endDateExclusive: LocalDate): List<Float?> {
-        val client = client ?: return nullDays(startDate, endDateExclusive)
+        val gateway = gateway ?: return nullDays(startDate, endDateExclusive)
         return perDay(startDate, endDateExclusive) { date ->
-            val response = client.aggregate(
-                AggregateRequest(
-                    metrics = setOf(StepsRecord.COUNT_TOTAL),
-                    timeRangeFilter = TimeRangeFilter.between(
-                        date.startOfDayInstant(), date.plusDays(1).startOfDayInstant()
-                    )
-                )
-            )
-            response[StepsRecord.COUNT_TOTAL]?.toFloat()
+            gateway.totalSteps(date.startOfDayInstant(), date.plusDays(1).startOfDayInstant())
         }
     }
 
@@ -113,17 +151,11 @@ class HealthConnectManager @Inject constructor(
     )
 
     suspend fun getMostRecentSleepSession(): RecentSleepSession? {
-        val client = client ?: return null
+        val gateway = gateway ?: return null
         val end = LocalDate.now().plusDays(1)
         val start = end.minusDays(3)
-        val session = client.readRecords(
-            ReadRecordsRequest(
-                recordType = SleepSessionRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(
-                    start.startOfDayInstant(), end.startOfDayInstant()
-                )
-            )
-        ).records.maxByOrNull { it.endTime }
+        val session = gateway.sleepSessions(start.startOfDayInstant(), end.startOfDayInstant())
+            .maxByOrNull { it.endTime }
         return session?.let {
             RecentSleepSession(it.startTime, it.endTime, LocalDate(it.endTime.toEpochMilli()))
         }
@@ -134,15 +166,10 @@ class HealthConnectManager @Inject constructor(
         endDateExclusive: LocalDate,
         extract: (SleepSessionRecord) -> Float?
     ): List<Float?> {
-        val client = client ?: return nullDays(startDate, endDateExclusive)
-        val sessions = client.readRecords(
-            ReadRecordsRequest(
-                recordType = SleepSessionRecord::class,
-                timeRangeFilter = TimeRangeFilter.between(
-                    startDate.startOfDayInstant(), endDateExclusive.plusDays(1).startOfDayInstant()
-                )
-            )
-        ).records
+        val gateway = gateway ?: return nullDays(startDate, endDateExclusive)
+        val sessions = gateway.sleepSessions(
+            startDate.startOfDayInstant(), endDateExclusive.plusDays(1).startOfDayInstant()
+        )
         return perDay(startDate, endDateExclusive) { date ->
             val session = sessions.firstOrNull { LocalDate(it.endTime.toEpochMilli()) == date }
             session?.let(extract)
