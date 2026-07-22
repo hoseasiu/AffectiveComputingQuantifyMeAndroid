@@ -78,8 +78,8 @@ lint/reports/
 # Project-specific: real backend URL / crash-reporting creds, never checked in
 base_url.xml
 
-# Agent files
-CLAUDE.md
+# Agent files (CLAUDE.md is tracked so it reaches every git worktree automatically —
+# see CLAUDE.md's own "Worktree setup" note for why AGENT_PLANS/ stays ignored)
 AGENT_PLANS/
 
 # root-level PDF files
