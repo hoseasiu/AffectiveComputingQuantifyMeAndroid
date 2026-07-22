@@ -53,7 +53,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.R
 import edu.mit.media.mysnapshot.data.ExperimentRepository
-import org.joda.time.format.DateTimeFormat
 import edu.mit.media.mysnapshot.engine.CheckinOutcome
 import edu.mit.media.mysnapshot.engine.ExperimentEngine
 import edu.mit.media.mysnapshot.engine.ExperimentType
@@ -69,6 +68,7 @@ import edu.mit.media.mysnapshot.ui.theme.rememberQuantifyMeFonts
 import edu.mit.media.mysnapshot.viewmodel.InstructionsEvent
 import edu.mit.media.mysnapshot.viewmodel.InstructionsUiState
 import edu.mit.media.mysnapshot.viewmodel.ExperimentInstructionsViewModel
+import java.time.format.DateTimeFormatter
 
 /**
  * Daily instructions screen (AGENT_PLANS/IMPROVEMENTS.md 2.2). Now Compose +
@@ -628,7 +628,7 @@ private fun TargetPreviewDialog(
                 Column {
                     upcomingTargets.forEach { upcoming ->
                         Text(
-                            text = "${previewDayFormat.print(upcoming.date)}: " +
+                            text = "${previewDayFormat.format(upcoming.date)}: " +
                                 (upcoming.target?.let { experimentType.formatTarget(it) } ?: "-"),
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
@@ -648,4 +648,4 @@ private fun TargetPreviewDialog(
     )
 }
 
-private val previewDayFormat = DateTimeFormat.forPattern("EEE, MMM d")
+private val previewDayFormat = DateTimeFormatter.ofPattern("EEE, MMM d")

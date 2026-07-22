@@ -4,8 +4,9 @@ import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import edu.mit.media.mysnapshot.activities.SettingsActivity
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionNotificationFragment
+import edu.mit.media.mysnapshot.data.NotificationData
+import edu.mit.media.mysnapshot.data.loadUserData
+import edu.mit.media.mysnapshot.data.parseNotificationTime
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -25,8 +26,8 @@ object AdherenceNudgeScheduler {
     private const val OFFSET_HOURS_AFTER_CHECKIN = 6
 
     fun schedule(context: Context) {
-        val userData = SettingsActivity.loadUserData(context).userData
-        val notificationData = userData.notificationData ?: QuestionNotificationFragment.NotificationData()
+        val userData = loadUserData(context).userData
+        val notificationData = userData.notificationData ?: NotificationData()
 
         val workManager = WorkManager.getInstance(context)
 
@@ -35,13 +36,13 @@ object AdherenceNudgeScheduler {
             return
         }
 
-        val checkinTime = QuestionNotificationFragment.parseDateString(notificationData.notificationTime)
+        val checkinTime = parseNotificationTime(notificationData.notificationTime)
             ?: return
 
         val target = Calendar.getInstance()
         val now = target.timeInMillis
-        target.set(Calendar.HOUR_OF_DAY, checkinTime.hourOfDay)
-        target.set(Calendar.MINUTE, checkinTime.minuteOfHour)
+        target.set(Calendar.HOUR_OF_DAY, checkinTime.hour)
+        target.set(Calendar.MINUTE, checkinTime.minute)
         target.set(Calendar.SECOND, 0)
         target.set(Calendar.MILLISECOND, 0)
         target.add(Calendar.HOUR_OF_DAY, OFFSET_HOURS_AFTER_CHECKIN)

@@ -73,7 +73,7 @@ not a build using 2016-era tooling. `./gradlew assembleDebug`, `assembleRelease`
 Everything below preserves existing behavior; nothing here is a feature change. Grouped by
 why the original coordinate/version couldn't just be bumped in place:
 
-**Vendored directly into source** (`app/src/main/java/com/flyco/pageindicator/...`):
+**Vendored directly into source, later deleted** (`app/src/main/java/com/flyco/pageindicator/...`):
 `com.flyco.pageindicator:FlycoPageIndicator_Lib` (used by `view/ScrollPageIndicator.java`,
 the onboarding-wizard page-dot indicator). Neither the original jcenter artifact nor a
 jitpack build of it is available — jitpack's own build of that repo fails outright against
@@ -81,7 +81,10 @@ its ancient Gradle config (verified via jitpack's build-status API). The library
 licensed (github.com/H07000223/FlycoPageIndicator); its ~950 lines were copied in unchanged
 except for `android.support.v4.view.ViewPager` → `androidx.viewpager.widget.ViewPager` and
 pointing its `R.styleable` references at this app's own `R` class (its `attrs.xml` was
-merged into `app/src/main/res/values/attrs.xml`).
+merged into `app/src/main/res/values/attrs.xml`). Issue #22 (onboarding wizard → Compose)
+deleted `ScrollPageIndicator` along with the rest of the legacy `view/`/`activities/questions/`
+zoo, and with it the entire vendored `com.flyco.pageindicator` package and its `attrs.xml`
+entries — it had no other callers.
 
 **Removed — confirmed zero references anywhere in the codebase** (verified by grepping
 `app/src/main/java` and `app/src/main/res`, not assumed):

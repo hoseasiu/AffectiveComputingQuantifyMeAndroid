@@ -4,11 +4,13 @@ import edu.mit.media.mysnapshot.database.CheckinEntity
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.ExperimentTypeRegistry
 import edu.mit.media.mysnapshot.engine.readBundledExperimentTypesJson
-import org.joda.time.DateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
 import org.junit.Test
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 /**
  * Proof for the "Optional: local data export" feature (AGENT_PLANS/MODERNIZE.md): the
@@ -29,8 +31,8 @@ class ExperimentExporterTest {
 
     private fun experiment(
         type: String = "leisurehappiness",
-        startTime: DateTime = DateTime.parse("2026-01-01"),
-        endTime: DateTime? = DateTime.parse("2026-01-29"),
+        startTime: OffsetDateTime = LocalDate.parse("2026-01-01").atStartOfDay(ZoneOffset.UTC).toOffsetDateTime(),
+        endTime: OffsetDateTime? = LocalDate.parse("2026-01-29").atStartOfDay(ZoneOffset.UTC).toOffsetDateTime(),
         resultValue: Float? = 90f,
         resultConfidence: Float? = 0.8f
     ) = ExperimentEntity(
@@ -57,7 +59,7 @@ class ExperimentExporterTest {
             CheckinEntity(
                 id = 1,
                 experimentId = 1,
-                checkinDate = DateTime.parse("2026-01-02"),
+                checkinDate = LocalDate.parse("2026-01-02").atStartOfDay(ZoneOffset.UTC).toOffsetDateTime(),
                 didFollowInstructions = 1,
                 happiness = 7,
                 stress = 3,
@@ -90,7 +92,7 @@ class ExperimentExporterTest {
     @Test
     fun suggestedFileName_includesTypeAndStartDate() {
         val name = ExperimentExporter.suggestedFileName(
-            experiment(type = "stepssleepefficiency", startTime = DateTime.parse("2026-03-05"))
+            experiment(type = "stepssleepefficiency", startTime = LocalDate.parse("2026-03-05").atStartOfDay(ZoneOffset.UTC).toOffsetDateTime())
         )
         assertEquals("quantifyme_stepssleepefficiency_2026-03-05.json", name)
     }

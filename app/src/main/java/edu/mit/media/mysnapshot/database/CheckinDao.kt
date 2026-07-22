@@ -6,7 +6,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
-import org.joda.time.DateTime
+import java.time.OffsetDateTime
 
 @Dao
 interface CheckinDao {
@@ -26,7 +26,7 @@ interface CheckinDao {
     fun getCheckinsForExperiment(experimentId: Int): Flow<List<CheckinEntity>>
 
     @Query("SELECT * FROM checkins WHERE experiment_id = :experimentId AND checkin_date >= :startDate ORDER BY checkin_date ASC")
-    fun getCheckinsForExperimentSince(experimentId: Int, startDate: DateTime): Flow<List<CheckinEntity>>
+    fun getCheckinsForExperimentSince(experimentId: Int, startDate: OffsetDateTime): Flow<List<CheckinEntity>>
 
     @Query("SELECT * FROM checkins ORDER BY checkin_date DESC LIMIT 1")
     fun getLastCheckin(): Flow<CheckinEntity?>

@@ -121,6 +121,9 @@ By clicking "I agree" you acknowledge that this app runs entirely on your device
         Too little, and you burn out. Too much, and you get nothing done. But how much is right to keep you productive?\n\n
         We\'ll help you measure just how much "you time" you need each day to get your best work done.
     ]]></string>
+    <!-- Generic intro screen for custom, user-authored experiment types (#31), which have no
+         hand-written per-type intro copy. -->
+    <string name="generic_experiment_intro_text">This experiment tracks how %1$s affects %2$s.</string>
 
     <string-array name="stage_instructions">
         <item>We\'re figuring out your normal routine. Please keep your sleep and activity habits as routine as possible.</item>

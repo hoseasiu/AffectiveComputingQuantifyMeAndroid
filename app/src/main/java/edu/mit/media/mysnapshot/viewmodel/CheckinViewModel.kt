@@ -151,7 +151,7 @@ class CheckinViewModel @Inject constructor(
         val timeFormat = DateTimeFormatter.ofPattern("h:mm a")
         val start = session.startTime.atZone(zone)
         val end = session.endTime.atZone(zone)
-        val night = session.attributedNight.toString("EEEE, MMM d")
+        val night = session.attributedNight.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
         return context.getString(
             R.string.checkin_sleep_night_explanation,
             start.format(timeFormat),

@@ -4,8 +4,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -20,10 +20,8 @@ import org.robolectric.annotation.Config
  * In-memory Room DAO CRUD coverage for [CheckinDao]. See
  * AGENT_PLANS/IMPROVEMENTS.md item 5 (test coverage backlog) -- priority 2 target.
  *
- * All fixture timestamps use noon UTC: [Converters] re-materializes stored rows in the
- * JVM's default time zone (see `ConvertersTest`), so a midnight-ish UTC instant could read
- * back as the previous/next calendar day depending on the machine's default zone. Noon UTC
- * keeps every `.dayOfMonth` assertion below stable regardless of where this runs.
+ * All fixture timestamps use noon UTC to keep every `.dayOfMonth` assertion below stable
+ * regardless of where this runs.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class)
@@ -55,7 +53,7 @@ class CheckinDaoTest {
 
     private fun baseExperiment() = ExperimentEntity(
         type = "leisurehappiness",
-        startTime = DateTime.now(DateTimeZone.UTC),
+        startTime = OffsetDateTime.now(ZoneOffset.UTC),
         selfEfficacy = 3,
         appEfficacy = 3,
         experimentEfficacy = 3,
@@ -66,7 +64,7 @@ class CheckinDaoTest {
 
     private fun checkin(
         experimentId: Int = this.experimentId,
-        date: DateTime,
+        date: OffsetDateTime,
         happiness: Int = 5
     ) = CheckinEntity(
         experimentId = experimentId,
@@ -80,7 +78,7 @@ class CheckinDaoTest {
 
     @Test
     fun insert_thenGetById_returnsSameData() = runBlocking {
-        val id = checkinDao.insert(checkin(date = DateTime(2024, 1, 1, 12, 0, DateTimeZone.UTC), happiness = 7))
+        val id = checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC), happiness = 7))
 
         val loaded = checkinDao.getById(id.toInt()).first()
 
@@ -90,7 +88,7 @@ class CheckinDaoTest {
 
     @Test
     fun update_persistsChangedFields() = runBlocking {
-        val id = checkinDao.insert(checkin(date = DateTime(2024, 1, 1, 12, 0, DateTimeZone.UTC)))
+        val id = checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC)))
         val original = checkinDao.getById(id.toInt()).first()!!
 
         checkinDao.update(original.copy(happiness = 1, stress = 5))
@@ -102,7 +100,7 @@ class CheckinDaoTest {
 
     @Test
     fun delete_removesRow() = runBlocking {
-        val id = checkinDao.insert(checkin(date = DateTime(2024, 1, 1, 12, 0, DateTimeZone.UTC)))
+        val id = checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC)))
         val row = checkinDao.getById(id.toInt()).first()!!
 
         checkinDao.delete(row)
@@ -112,10 +110,10 @@ class CheckinDaoTest {
 
     @Test
     fun getCheckinsForExperiment_ordersDescendingAndExcludesOtherExperiments() = runBlocking {
-        checkinDao.insert(checkin(date = DateTime(2024, 1, 1, 12, 0, DateTimeZone.UTC)))
-        checkinDao.insert(checkin(date = DateTime(2024, 1, 3, 12, 0, DateTimeZone.UTC)))
-        checkinDao.insert(checkin(date = DateTime(2024, 1, 2, 12, 0, DateTimeZone.UTC)))
-        checkinDao.insert(checkin(experimentId = otherExperimentId, date = DateTime(2024, 1, 5, 12, 0, DateTimeZone.UTC)))
+        checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC)))
+        checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 3, 12, 0, 0, 0, ZoneOffset.UTC)))
+        checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 2, 12, 0, 0, 0, ZoneOffset.UTC)))
+        checkinDao.insert(checkin(experimentId = otherExperimentId, date = OffsetDateTime.of(2024, 1, 5, 12, 0, 0, 0, ZoneOffset.UTC)))
 
         val result = checkinDao.getCheckinsForExperiment(experimentId).first()
 
@@ -125,12 +123,12 @@ class CheckinDaoTest {
 
     @Test
     fun getCheckinsForExperimentSince_filtersAndOrdersAscending() = runBlocking {
-        checkinDao.insert(checkin(date = DateTime(2024, 1, 1, 12, 0, DateTimeZone.UTC)))
-        checkinDao.insert(checkin(date = DateTime(2024, 1, 3, 12, 0, DateTimeZone.UTC)))
-        checkinDao.insert(checkin(date = DateTime(2024, 1, 5, 12, 0, DateTimeZone.UTC)))
+        checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC)))
+        checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 3, 12, 0, 0, 0, ZoneOffset.UTC)))
+        checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 5, 12, 0, 0, 0, ZoneOffset.UTC)))
 
         val since = checkinDao.getCheckinsForExperimentSince(
-            experimentId, DateTime(2024, 1, 2, 0, 0, DateTimeZone.UTC)
+            experimentId, OffsetDateTime.of(2024, 1, 2, 0, 0, 0, 0, ZoneOffset.UTC)
         ).first()
 
         assertEquals(listOf(3, 5), since.map { it.checkinDate.dayOfMonth })
@@ -138,9 +136,9 @@ class CheckinDaoTest {
 
     @Test
     fun getLastCheckin_returnsMostRecentAcrossAllExperiments() = runBlocking {
-        checkinDao.insert(checkin(date = DateTime(2024, 1, 1, 12, 0, DateTimeZone.UTC)))
-        checkinDao.insert(checkin(experimentId = otherExperimentId, date = DateTime(2024, 1, 9, 12, 0, DateTimeZone.UTC)))
-        checkinDao.insert(checkin(date = DateTime(2024, 1, 4, 12, 0, DateTimeZone.UTC)))
+        checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC)))
+        checkinDao.insert(checkin(experimentId = otherExperimentId, date = OffsetDateTime.of(2024, 1, 9, 12, 0, 0, 0, ZoneOffset.UTC)))
+        checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 4, 12, 0, 0, 0, ZoneOffset.UTC)))
 
         val last = checkinDao.getLastCheckin().first()
 
@@ -150,8 +148,8 @@ class CheckinDaoTest {
 
     @Test
     fun deleteForExperiment_removesOnlyThatExperimentsCheckins() = runBlocking {
-        checkinDao.insert(checkin(date = DateTime(2024, 1, 1, 12, 0, DateTimeZone.UTC)))
-        checkinDao.insert(checkin(experimentId = otherExperimentId, date = DateTime(2024, 1, 2, 12, 0, DateTimeZone.UTC)))
+        checkinDao.insert(checkin(date = OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC)))
+        checkinDao.insert(checkin(experimentId = otherExperimentId, date = OffsetDateTime.of(2024, 1, 2, 12, 0, 0, 0, ZoneOffset.UTC)))
 
         checkinDao.deleteForExperiment(experimentId)
 

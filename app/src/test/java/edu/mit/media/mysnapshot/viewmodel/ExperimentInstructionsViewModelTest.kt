@@ -20,7 +20,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeoutOrNull
-import org.joda.time.DateTime
+import java.time.OffsetDateTime
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -81,7 +81,7 @@ class ExperimentInstructionsViewModelTest {
         db.checkinDao().insert(
             CheckinEntity(
                 experimentId = experimentId,
-                checkinDate = DateTime.now(),
+                checkinDate = OffsetDateTime.now(),
                 didFollowInstructions = 3,
                 happiness = 3,
                 stress = 3,

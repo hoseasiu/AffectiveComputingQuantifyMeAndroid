@@ -2,6 +2,7 @@ package edu.mit.media.mysnapshot.data
 
 import dagger.hilt.android.qualifiers.ApplicationContext
 import edu.mit.media.mysnapshot.database.CheckinEntity
+import edu.mit.media.mysnapshot.database.CustomExperimentTypeEntity
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.database.QuantifyMeDatabase
 import edu.mit.media.mysnapshot.engine.CheckinOutcome
@@ -9,13 +10,14 @@ import edu.mit.media.mysnapshot.engine.CheckinRecord
 import edu.mit.media.mysnapshot.engine.ExperimentDataProvider
 import edu.mit.media.mysnapshot.engine.ExperimentEngine
 import edu.mit.media.mysnapshot.engine.ExperimentType
+import edu.mit.media.mysnapshot.engine.ExperimentTypeRegistry
 import edu.mit.media.mysnapshot.health.HealthConnectManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
-import org.joda.time.DateTime
-import org.joda.time.Days
-import org.joda.time.LocalDate
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,6 +36,32 @@ class ExperimentRepository @Inject constructor(
 ) {
     private val experimentDao = database.experimentDao()
     private val checkinDao = database.checkinDao()
+    private val customExperimentTypeDao = database.customExperimentTypeDao()
+
+    /**
+     * Reads every user-created experiment type from Room and merges them into
+     * [ExperimentTypeRegistry] alongside the bundled config. Invoked from
+     * `MyApplication.onCreate()` (so `ExperimentType.fromTypeKey`/`getAllTypes` see custom
+     * types from process start) and again after any custom-type create (#33) so a newly
+     * authored type is immediately usable without a restart.
+     */
+    suspend fun loadCustomTypes() {
+        val types = customExperimentTypeDao.getAll().first()
+            .map { ExperimentTypeRegistry.parseCustomTypeJson(it.json) }
+        ExperimentTypeRegistry.refreshCustomTypes(types)
+    }
+
+    /** Persists a newly authored custom experiment type and refreshes the registry with it. */
+    suspend fun createCustomType(type: ExperimentType) {
+        customExperimentTypeDao.insert(
+            CustomExperimentTypeEntity(
+                typeKey = type.typeKey,
+                json = ExperimentTypeRegistry.toCustomTypeJson(type),
+                createdAt = OffsetDateTime.now()
+            )
+        )
+        loadCustomTypes()
+    }
 
     suspend fun createExperiment(
         type: ExperimentType,
@@ -46,7 +74,7 @@ class ExperimentRepository @Inject constructor(
         val (datesJson, targetsJson, restartJson) = state.toJson()
         val experiment = ExperimentEntity(
             type = type.typeKey,
-            startTime = DateTime.now(),
+            startTime = OffsetDateTime.now(),
             selfEfficacy = selfEfficacy,
             appEfficacy = appEfficacy,
             experimentEfficacy = experimentEfficacy,
@@ -102,7 +130,7 @@ class ExperimentRepository @Inject constructor(
         return (1..lastStage).map { stage ->
             val (start, end) = state.stageDates.getOrNull(stage) ?: (null to null)
             val stageCheckins = checkins.filter { checkin ->
-                val date = LocalDate(checkin.checkinDate)
+                val date = checkin.checkinDate.toLocalDate()
                 start != null && !date.isBefore(start) && (end == null || !date.isAfter(end))
             }
             StageProgress(
@@ -139,13 +167,13 @@ class ExperimentRepository @Inject constructor(
         val (start, _) = stageDateRange(state, experiment.currentStage, today, experiment.endTime, clipToToday = false)
         if (start == null) return emptyList()
 
-        val dayInStage = Days.daysBetween(start, today).days
+        val dayInStage = ChronoUnit.DAYS.between(start, today).toInt()
         val stageTarget = state.stageTargetValues.getOrNull(experiment.currentStage) ?: return emptyList()
 
         // Stages run day-in-stage 0..6, ending on day 7 (see ExperimentEngine.shouldEndStage).
         return ((dayInStage + 1) until 7).map { day ->
             UpcomingTarget(
-                date = start.plusDays(day),
+                date = start.plusDays(day.toLong()),
                 target = ExperimentEngine.getDailyTarget(type.useVariability, stageTarget, experiment.initialStageAverage ?: 0f, day)
             )
         }
@@ -185,17 +213,23 @@ class ExperimentRepository @Inject constructor(
         happiness: Int,
         stress: Int,
         productivity: Int,
-        leisureTime: Int
+        leisureTime: Int,
+        // Populated only when the experiment's type has a SignalRef.Custom input/output slot
+        // -- the data-driven checkin wizard that collects these lives in #32.
+        customInputValue: Float? = null,
+        customOutputValue: Float? = null
     ): CheckinOutcome {
         checkinDao.insert(
             CheckinEntity(
                 experimentId = experimentId,
-                checkinDate = DateTime.now(),
+                checkinDate = OffsetDateTime.now(),
                 didFollowInstructions = didFollowInstructions,
                 happiness = happiness,
                 stress = stress,
                 productivity = productivity,
-                leisureTime = leisureTime
+                leisureTime = leisureTime,
+                customInputValue = customInputValue,
+                customOutputValue = customOutputValue
             )
         )
 
@@ -210,7 +244,7 @@ class ExperimentRepository @Inject constructor(
 
         // should_end_stage(): evaluate the *current* (pre-advance) stage.
         val (curStart, curEndClipped) = stageDateRange(state, experiment.currentStage, today, experiment.endTime, clipToToday = true)
-        val stageDay = if (curStart != null) Days.daysBetween(curStart, today).days else 0
+        val stageDay = if (curStart != null) ChronoUnit.DAYS.between(curStart, today).toInt() else 0
         val curInputs = if (curStart != null) ExperimentDataProvider.getInputs(type, checkins, curStart, curEndClipped!!, healthConnect) else emptyList()
         val curOutputs = if (curStart != null) ExperimentDataProvider.getOutputs(type, checkins, curStart, curEndClipped!!, healthConnect) else emptyList()
         val missedDays = ExperimentEngine.getNumMissedDays(curInputs, curOutputs)
@@ -244,7 +278,7 @@ class ExperimentRepository @Inject constructor(
         }
 
         // Recompute stage_inputs/target for the (possibly just-advanced) current stage.
-        val (newStart, newEndRaw) = stageDateRange(state, currentStageNum, today, experiment.endTime ?: if (currentStageNum > ExperimentEngine.NUM_STAGES) DateTime.now() else null, clipToToday = true)
+        val (newStart, newEndRaw) = stageDateRange(state, currentStageNum, today, experiment.endTime ?: if (currentStageNum > ExperimentEngine.NUM_STAGES) OffsetDateTime.now() else null, clipToToday = true)
         val newStageInputs = if (newStart != null) ExperimentDataProvider.getInputs(type, checkins, newStart, newEndRaw!!, healthConnect) else emptyList()
         val dayInStage = newStageInputs.size - 1
         val newStageTarget = state.stageTargetValues.getOrNull(currentStageNum)
@@ -256,7 +290,7 @@ class ExperimentRepository @Inject constructor(
         var endTime = experiment.endTime
 
         if (currentStageNum > ExperimentEngine.NUM_STAGES) {
-            endTime = DateTime.now()
+            endTime = OffsetDateTime.now()
             val validDaysByStage = (1..ExperimentEngine.NUM_STAGES).associateWith { stage ->
                 val (s, e) = stageDateRange(state, stage, today, endTime, clipToToday = true)
                 val ins = ExperimentDataProvider.getInputs(type, checkins, s!!, e!!, healthConnect)
@@ -305,12 +339,12 @@ class ExperimentRepository @Inject constructor(
         state: ExperimentStageState,
         stage: Int,
         today: LocalDate,
-        endTime: DateTime?,
+        endTime: OffsetDateTime?,
         clipToToday: Boolean
     ): Pair<LocalDate?, LocalDate?> {
         if (stage >= state.stageDates.size) {
             return if (endTime != null) {
-                val now = LocalDate(endTime)
+                val now = endTime.toLocalDate()
                 now to now
             } else {
                 null to null
@@ -327,6 +361,8 @@ class ExperimentRepository @Inject constructor(
         leisureTime = leisureTime.toFloat(),
         happiness = happiness.toFloat(),
         stress = stress.toFloat(),
-        productivity = productivity.toFloat()
+        productivity = productivity.toFloat(),
+        customInputValue = customInputValue,
+        customOutputValue = customOutputValue
     )
 }
