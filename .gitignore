@@ -87,3 +87,10 @@ base_url.xml
 
 # root-level PDF files
 /*.pdf
+
+# Claude Code state. Everything under .claude/ is machine-local EXCEPT skills/, which
+# is tracked deliberately so ordinary checkout delivers it to every agent worktree
+# (same reasoning as AGENT_PLANS/ above). Without the blanket ignore, a `git add -A`
+# would sweep in .claude/worktrees/ — every agent worktree, build output included.
+.claude/*
+!.claude/skills/

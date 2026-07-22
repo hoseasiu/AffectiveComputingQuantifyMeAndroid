@@ -29,48 +29,19 @@ Never create an `AGENT_PLANS` junction or copy; if you find one, see "Windows fo
 
 ## Agent coordination
 
-Agents pick their own issues, so the rule is: **derive live state, never read it from a file.**
+Multiple agents work this repo concurrently and pick their own issues. The full protocol —
+session start, picking, claiming, pushing, releasing, and reaping stale claims — lives in the
+**`agent-coordination` skill** (`.claude/skills/agent-coordination/SKILL.md`, invocable as
+`/agent-coordination`). **Invoke it before claiming, working, or finishing any issue.**
 
-**1. Start every session with the status script.** It fetches, then reports every worktree,
-branch, push state, PR, issue claim, and a list of problems — all from git and `gh`, nothing
-cached:
+The two rules that matter even if you never open the skill:
 
-```bash
-pwsh -File scripts/agent-status.ps1
-```
-
-**2. Pick an unclaimed issue.** The script lists open issues without the `agent:in-progress`
-label. Before claiming, check [`AGENT_PLANS/DEPENDENCIES.md`](AGENT_PLANS/DEPENDENCIES.md) —
-it holds the only coordination facts that *can't* be derived: which issues block which, and
-which issues touch the same files (merge-conflict risk even with no hard dependency).
-
-**3. Claim it on the issue, before writing code:**
-
-```bash
-gh issue edit <N> --add-label "agent:in-progress" --add-assignee @me
-gh issue comment <N> --body "Claimed by an agent. Branch: claude/issue-<N>-<slug>"
-```
-
-Claims live on GitHub because that is the only store shared across worktrees, safe under
-concurrency, visible without a terminal, and able to survive a local disaster. A previous
-scheme kept claims in a gitignored `COORDINATION.md`; it was destroyed and took every claim
-with it.
-
-**4. Push the branch and open a draft PR as soon as you have one real commit** — not at the
-end. The PR is the durable record that the work exists; an unpushed branch is invisible to
-every other agent and to the user, and uncommitted work is invisible to *everything*. Commit
-early and push early even if the work is unfinished.
-
-**5. Release** happens on merge (`Closes #N` auto-closes the issue; drop the label if it
-lingers). If you abandon an issue, remove the label and say so in a comment. A claim with no
-commits and no PR after a day is abandoned — any agent may take it without asking.
-
-**Stale-state rules that actually bite:**
-- **Always `git fetch` before judging whether a branch is pushed or a PR exists.** Reading
-  remote-tracking refs without fetching reports pushed branches as unpushed and open PRs as
-  missing. This has already caused a real misdiagnosis; the status script fetches for you.
-- `git worktree list` is ground truth for worktrees, but a worktree being *present* says
-  nothing about whether it's active — check `Ahead`/`Dirty`/`PR` in the script output.
+- **Derive live state, never read it from a file.** Who is working on what comes from
+  `pwsh -File scripts/agent-status.ps1` (git + `gh`, nothing cached), never from a document.
+- **Claims live on the GitHub issue** (`agent:in-progress` label + assignee), because that is
+  the only store shared across worktrees, safe under concurrency, and able to survive a local
+  disaster. A previous scheme kept claims in a gitignored `COORDINATION.md`; it was destroyed
+  and took every claim with it. Don't reintroduce a local claims file.
 
 **Windows footguns (these destroyed data here once already):**
 - **Never `Remove-Item -Recurse` a directory that might contain a junction** — it deletes
