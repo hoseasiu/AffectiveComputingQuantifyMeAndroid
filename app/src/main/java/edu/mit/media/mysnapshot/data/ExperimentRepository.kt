@@ -63,6 +63,20 @@ class ExperimentRepository @Inject constructor(
         loadCustomTypes()
     }
 
+    /**
+     * Deletes a user-created experiment type, refusing when any past or present experiment
+     * still references it (issue #34's deletion scope guard -- v1 allows delete-when-unused
+     * only, no editing). [CustomExperimentTypeDao.countByType] queries the `experiments` table
+     * directly, so that single check is already "combined" with `ExperimentDao`'s data.
+     * Returns whether the delete happened, so the caller can tell "in use" apart from success.
+     */
+    suspend fun deleteCustomType(typeKey: String): Boolean {
+        if (customExperimentTypeDao.countByType(typeKey) > 0) return false
+        customExperimentTypeDao.deleteByKey(typeKey)
+        loadCustomTypes()
+        return true
+    }
+
     suspend fun createExperiment(
         type: ExperimentType,
         selfEfficacy: Int,
