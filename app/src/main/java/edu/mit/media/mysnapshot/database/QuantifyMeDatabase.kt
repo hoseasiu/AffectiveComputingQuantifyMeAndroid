@@ -9,15 +9,17 @@ import androidx.room.TypeConverters
 @Database(
     entities = [
         ExperimentEntity::class,
-        CheckinEntity::class
+        CheckinEntity::class,
+        CustomExperimentTypeEntity::class
     ],
-    version = 1,
-    exportSchema = false
+    version = 2,
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class QuantifyMeDatabase : RoomDatabase() {
     abstract fun experimentDao(): ExperimentDao
     abstract fun checkinDao(): CheckinDao
+    abstract fun customExperimentTypeDao(): CustomExperimentTypeDao
 
     companion object {
         @Volatile
@@ -29,7 +31,7 @@ abstract class QuantifyMeDatabase : RoomDatabase() {
                     context.applicationContext,
                     QuantifyMeDatabase::class.java,
                     "quantify_me_database"
-                ).build().also { instance = it }
+                ).addMigrations(*ALL_MIGRATIONS).build().also { instance = it }
             }
         }
     }
