@@ -108,7 +108,16 @@ Play listing.
 
 ## §8 — Testing
 
-147 JVM unit tests. `androidTest` exists but **no emulator runs anywhere in CI** (§10) —
+**Unit tests have a 10-minute task timeout** (`app/build.gradle`, `testOptions.unitTests.all`).
+JUnit 4 has no global per-test timeout and Gradle waits forever by default, so one hung test
+stalls the entire suite with the worker JVM at 0% CPU — which looks exactly like "the tests are
+slow." That happened for real (`ExperimentCompleteViewModelTest`, fixed in #40). Per-test
+`started` logging is on so the last STARTED line names the culprit when the timeout fires.
+
+The suite runs in ~25s; a full cold build plus tests is under 2 minutes. If a run takes
+materially longer, suspect a hang or Gradle lock contention (see §10), not genuine slowness.
+
+173 JVM unit tests. `androidTest` exists but **no emulator runs anywhere in CI** (§10) —
 `ExperimentCheckinScreenTest` only runs when launched by hand. UI changes routinely land
 "not visually verified on-device"; those notes are real gaps, not boilerplate.
 
