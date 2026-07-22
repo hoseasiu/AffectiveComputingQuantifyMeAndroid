@@ -65,6 +65,9 @@ class ExperimentChooseActivity : ComponentActivity() {
                 ExperimentChooseScreen(
                     onExperimentTypeSelected = { type ->
                         ExperimentIntroActivity.startActivity(this, type)
+                    },
+                    onCreateYourOwnSelected = {
+                        CreateExperimentActivity.startActivity(this)
                     }
                 )
             }
@@ -94,7 +97,10 @@ private val chooseOrder = listOf(
 )
 
 @Composable
-private fun ExperimentChooseScreen(onExperimentTypeSelected: (ExperimentType) -> Unit) {
+private fun ExperimentChooseScreen(
+    onExperimentTypeSelected: (ExperimentType) -> Unit,
+    onCreateYourOwnSelected: () -> Unit
+) {
     val fonts = rememberQuantifyMeFonts()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -122,6 +128,29 @@ private fun ExperimentChooseScreen(onExperimentTypeSelected: (ExperimentType) ->
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+            }
+
+            // Issue #33 -- lets a user author a brand new experiment type on-device instead of
+            // picking one of the bundled ones above. Deliberately not part of chooseOrder/the
+            // ExperimentType.fromTypeKey mapping above, since it navigates to a different
+            // Activity (CreateExperimentActivity) rather than an existing ExperimentType.
+            Card(
+                onClick = onCreateYourOwnSelected,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 7.dp),
+                shape = RoundedCornerShape(10.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+            ) {
+                Text(
+                    text = "Create Your Own Experiment",
+                    fontFamily = fonts.raleway,
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp)
+                )
             }
         }
 
