@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,6 +17,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -222,6 +224,74 @@ private fun scaleButtonColor(index: Int, total: Int, leftColor: Color, rightColo
         blue = leftColor.blue + (rightColor.blue - leftColor.blue) * fraction,
         alpha = 1f
     )
+}
+
+/**
+ * A free-text wizard page with an explicit Continue button -- unlike [RadioScaleStep]/
+ * [DropdownStep], a text field has no natural "answering it IS advancing" moment, so the
+ * caller decides when the answer is good enough via [continueEnabled] (issue #33's experiment
+ * name step is the first user of this).
+ */
+@Composable
+fun TextFieldStep(
+    icon: Int,
+    question: String,
+    fieldLabel: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    onContinue: () -> Unit,
+    continueEnabled: Boolean,
+    helperText: String? = null
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = 16.dp)
+        )
+        Text(
+            text = question,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .semantics { heading() }
+                .padding(bottom = 24.dp)
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(fieldLabel) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (helperText != null) {
+            Text(
+                text = helperText,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            )
+        }
+        Button(
+            onClick = onContinue,
+            enabled = continueEnabled,
+            modifier = Modifier
+                .padding(top = 24.dp)
+                .defaultMinSize(minHeight = 48.dp)
+        ) {
+            Text("Continue")
+        }
+    }
 }
 
 /** Replaces `NoDefaultSpinner`: an empty-string sentinel stands in for "nothing selected yet". */

@@ -60,6 +60,11 @@
             android:label="@string/title_activity_main" >
         </activity>
         <activity
+            android:name=".activities.CreateExperimentActivity"
+            android:launchMode="singleTask"
+            android:label="@string/title_activity_main" >
+        </activity>
+        <activity
             android:name="edu.mit.media.mysnapshot.activities.ExperimentConfigActivity"
             android:launchMode="singleTask"
             android:label="@string/title_activity_main" >
