@@ -22,9 +22,10 @@ They are the source of truth for *why* things are the way they are — this file
 just a map, not a duplicate. `MODERNIZE.md` has the phase-by-phase modernization history
 (backend removal, Jawbone→Health Connect, Compose migration, WorkManager swap).
 `IMPROVEMENTS.md` has the backlog and a "Landed"/"Still open" table — check it before assuming
-something is or isn't done. **All three `AGENT_PLANS/` files are tracked in git**, so ordinary
-checkout delivers them to every worktree. Never create an `AGENT_PLANS` junction or copy; if you
-find one, see "Windows footguns" below.
+something is or isn't done. [`AGENT_PLANS/DEPENDENCIES.md`](AGENT_PLANS/DEPENDENCIES.md) covers
+issue blocking order and file-overlap risk; read it before claiming an issue (see below).
+**All three files are tracked in git**, so ordinary checkout delivers them to every worktree.
+Never create an `AGENT_PLANS` junction or copy; if you find one, see "Windows footguns" below.
 
 ## Agent coordination
 
