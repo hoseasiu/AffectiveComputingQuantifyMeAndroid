@@ -78,9 +78,12 @@ lint/reports/
 # Project-specific: real backend URL / crash-reporting creds, never checked in
 base_url.xml
 
-# Agent files (CLAUDE.md is tracked so it reaches every git worktree automatically —
-# see CLAUDE.md's own "Worktree setup" note for why AGENT_PLANS/ stays ignored)
-AGENT_PLANS/
+# NOTE: AGENT_PLANS/ used to be ignored here. It is now tracked, deliberately —
+# being ignored meant no history and no backup, and the directory was eventually
+# destroyed outright (a worktree junction plus a recursive delete). The churny
+# "who is working on what" table that justified ignoring it is gone; that state is
+# now derived by scripts/agent-status.ps1 and claimed via GitHub labels instead.
+# See CLAUDE.md, "Agent coordination".
 
 # root-level PDF files
 /*.pdf

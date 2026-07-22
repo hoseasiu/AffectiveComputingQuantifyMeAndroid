@@ -16,57 +16,70 @@ kind. All experiment logic and data live on-device (Room + a ported Kotlin copy 
 adaptive-experiment algorithm); wearable data comes from Health Connect instead of the defunct
 Jawbone SDK.
 
-**Read [`AGENT_PLANS/MODERNIZE.md`](AGENT_PLANS/MODERNIZE.md),
-[`AGENT_PLANS/IMPROVEMENTS.md`](AGENT_PLANS/IMPROVEMENTS.md), and
-[`AGENT_PLANS/COORDINATION.md`](AGENT_PLANS/COORDINATION.md) before making non-trivial changes.**
-They are living documents (agents are expected to keep them updated) and are the actual source of
-truth for *why* things are the way they are and *what's currently in progress* — this file is
-deliberately just a map, not a duplicate. `MODERNIZE.md` has the full phase-by-phase modernization
-history/rationale (backend removal, Jawbone→Health Connect, Compose migration, WorkManager swap).
-`IMPROVEMENTS.md` has the current open backlog and a running "Landed"/"Still open" status table —
-check its top-of-file status block before assuming something is or isn't done. **Before picking a
-GitHub issue to work on, check `COORDINATION.md`** — it tracks which open issues depend on or
-block each other, which files/modules multiple issues touch (merge-conflict risk even without a
-hard dependency), and a snapshot of which issues currently have an active agent/worktree on them.
-**Don't trust that snapshot's worktree list as complete or current in either direction** — a
-worktree can be created or removed by any concurrent session (e.g. via `EnterWorktree`/
-`ExitWorktree`) without the file being updated either way, so it can be missing brand-new worktrees
-just as easily as it can be listing ones that are already gone. Run `git worktree list` yourself as
-ground truth, and cross-check with `git -C <worktree-path> status --short` (per the file's own
-notes) before assuming a worktree is idle or claimed — don't just filter the table. Update
-`COORDINATION.md` when you start or finish an issue, whenever a dependency changes, **and whenever
-you open a PR and again when it merges** — a merged PR closes an issue in fact even before GitHub's
-own "Closes #N" auto-close lands, so the active-worktree table, the dependency graph, and the
-file-overlap table can all go stale at that exact moment; don't wait for a later cleanup pass to
-reflect it.
+**Read [`AGENT_PLANS/MODERNIZE.md`](AGENT_PLANS/MODERNIZE.md) and
+[`AGENT_PLANS/IMPROVEMENTS.md`](AGENT_PLANS/IMPROVEMENTS.md) before making non-trivial changes.**
+They are the source of truth for *why* things are the way they are — this file is deliberately
+just a map, not a duplicate. `MODERNIZE.md` has the phase-by-phase modernization history
+(backend removal, Jawbone→Health Connect, Compose migration, WorkManager swap).
+`IMPROVEMENTS.md` has the backlog and a "Landed"/"Still open" table — check it before assuming
+something is or isn't done. [`AGENT_PLANS/DEPENDENCIES.md`](AGENT_PLANS/DEPENDENCIES.md) covers
+issue blocking order and file-overlap risk; read it before claiming an issue (see below).
+**All three files are tracked in git**, so ordinary checkout delivers them to every worktree.
+Never create an `AGENT_PLANS` junction or copy; if you find one, see "Windows footguns" below.
 
-**Worktree setup — `AGENT_PLANS/` is gitignored, this file is not.** `CLAUDE.md` is tracked in git
-specifically so it reaches every worktree automatically via ordinary checkout, regardless of how
-the worktree was created (`EnterWorktree`, raw `git worktree add`, `claude -w`) — that's how you're
-able to read this note at all in a fresh worktree. `AGENT_PLANS/` stays gitignored because
-`COORDINATION.md` inside it churns every session and shouldn't pollute unrelated PR diffs, which
-means **`git worktree add` never brings it into a new worktree** — check for it
-(`Test-Path AGENT_PLANS/COORDINATION.md`) and self-heal before trusting its absence to mean
-anything:
-1. Find the main worktree: `git worktree list` — its first line, the one *not* under
-   `.claude/worktrees/`.
-2. Link, don't copy, so edits stay shared with every other worktree instead of silently rotting
-   into a stale snapshot the moment they're made (this already happened once — a worktree copied
-   only `MODERNIZE.md`, once, and never saw another update):
-   ```powershell
-   New-Item -ItemType Junction -Path AGENT_PLANS -Target "<main-worktree-path>\AGENT_PLANS"
-   ```
-3. If `AGENT_PLANS/` already exists here as a real directory rather than a junction to the main
-   worktree, it's an old stale copy — don't overwrite it silently; reconcile it deliberately first.
+## Agent coordination
 
-Because `COORDINATION.md` is now the same physical file shared live across every linked worktree,
-not a private copy: **always re-read it immediately before editing** (don't edit from a version
-read several tool-calls ago — another session may have written to it since), and prefer appending
-a dated `## Update: <date>` section or editing only your own row/section over rewriting whole
-tables. This is already close to the file's existing style; the point is to make it deliberate now
-that concurrent writers are real. This isn't a hard locking scheme — the file already treats its
-active-worktree section as a lossy, re-derivable snapshot, so an occasional lost update is an
-accepted cost, not a new risk.
+Agents pick their own issues, so the rule is: **derive live state, never read it from a file.**
+
+**1. Start every session with the status script.** It fetches, then reports every worktree,
+branch, push state, PR, issue claim, and a list of problems — all from git and `gh`, nothing
+cached:
+
+```bash
+pwsh -File scripts/agent-status.ps1
+```
+
+**2. Pick an unclaimed issue.** The script lists open issues without the `agent:in-progress`
+label. Before claiming, check [`AGENT_PLANS/DEPENDENCIES.md`](AGENT_PLANS/DEPENDENCIES.md) —
+it holds the only coordination facts that *can't* be derived: which issues block which, and
+which issues touch the same files (merge-conflict risk even with no hard dependency).
+
+**3. Claim it on the issue, before writing code:**
+
+```bash
+gh issue edit <N> --add-label "agent:in-progress" --add-assignee @me
+gh issue comment <N> --body "Claimed by an agent. Branch: claude/issue-<N>-<slug>"
+```
+
+Claims live on GitHub because that is the only store shared across worktrees, safe under
+concurrency, visible without a terminal, and able to survive a local disaster. A previous
+scheme kept claims in a gitignored `COORDINATION.md`; it was destroyed and took every claim
+with it.
+
+**4. Push the branch and open a draft PR as soon as you have one real commit** — not at the
+end. The PR is the durable record that the work exists; an unpushed branch is invisible to
+every other agent and to the user, and uncommitted work is invisible to *everything*. Commit
+early and push early even if the work is unfinished.
+
+**5. Release** happens on merge (`Closes #N` auto-closes the issue; drop the label if it
+lingers). If you abandon an issue, remove the label and say so in a comment. A claim with no
+commits and no PR after a day is abandoned — any agent may take it without asking.
+
+**Stale-state rules that actually bite:**
+- **Always `git fetch` before judging whether a branch is pushed or a PR exists.** Reading
+  remote-tracking refs without fetching reports pushed branches as unpushed and open PRs as
+  missing. This has already caused a real misdiagnosis; the status script fetches for you.
+- `git worktree list` is ground truth for worktrees, but a worktree being *present* says
+  nothing about whether it's active — check `Ahead`/`Dirty`/`PR` in the script output.
+
+**Windows footguns (these destroyed data here once already):**
+- **Never `Remove-Item -Recurse` a directory that might contain a junction** — it deletes
+  through the link into the *target's* contents. Use `cmd /c rmdir <path>` to remove a
+  junction itself.
+- **Never `git clean -xdf` in a worktree.** It follows junctions and deletes ignored files
+  you may not be able to recover.
+- Don't recreate the `AGENT_PLANS` junction that older instructions recommended. The files
+  are tracked now; checkout handles it.
 
 ## Build system
 
@@ -82,7 +95,7 @@ accepted cost, not a new risk.
     store-ready)
   - `./gradlew testDebugUnitTest` — run the unit test suite
   - `./gradlew clean`
-- **There is now a real unit test suite** (143 tests as of issue #21, PR #36) under `app/src/test/`
+- **There is now a real unit test suite** (147 tests on `master` as of 2026-07-22) under `app/src/test/`
   — DAOs, `ExperimentEngine`/`ExperimentTypeConfig`, `ExperimentRepository` (including the three
   Health-Connect-backed experiment types), `HealthConnectManager` (via a `HealthConnectGateway`
   seam + `FakeHealthConnectGateway`, since the real client's response types have library-`internal`
@@ -92,8 +105,10 @@ accepted cost, not a new risk.
   `HiltTestApplication`) and `ExperimentCheckinScreenTest`, a Compose UI test that seeds a real
   experiment into the on-device Room DB and drives the actual check-in wizard end-to-end via
   `ActivityScenario` + Compose test APIs. CI (`.github/workflows/android-ci.yml`) runs
-  `testDebugUnitTest`/`assembleDebug`/`assembleRelease`/`assembleDebugAndroidTest` on push/PR to
-  `master` — the last one only *compiles and packages* the instrumentation test APK. **No
+  `testDebugUnitTest`/`assembleDebug`/`assembleRelease`/`assembleDebugAndroidTest` — the last one
+  only *compiles and packages* the instrumentation test APK. **CI is `workflow_dispatch` only**
+  (manual, since `ebf1e65`); it does **not** run on push or PR, so nothing verifies a branch
+  unless you run the suite locally or trigger the workflow by hand. **No
   on-device/emulator verification happens automatically anywhere in this project** — the current
   `ubuntu-latest` CI runner has no emulator, so `ExperimentCheckinScreenTest` only ever runs when a
   human (or an agent with device/adb access) launches it manually. Wiring up an emulator in CI (e.g.
