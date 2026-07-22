@@ -13,7 +13,18 @@
     <LinearLayout
         style="@style/screenContainer"
         android:orientation="vertical" android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:layout_above="@id/done_button">
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
 
         <edu.mit.media.mysnapshot.view.FontTextView
             android:layout_width="fill_parent"
@@ -40,11 +51,8 @@
             android:textColor="@color/white"
             android:layout_marginLeft="10dp"
             android:layout_marginRight="10dp" />
-
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"></FrameLayout>
+            </LinearLayout>
+        </ScrollView>
 
     </LinearLayout>
 

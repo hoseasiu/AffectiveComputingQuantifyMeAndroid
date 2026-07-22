@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -167,7 +168,7 @@ private fun ExperimentCard(
     onExport: (ExperimentEntity) -> Unit
 ) {
     val experimentType = remember(experiment.type) { ExperimentType.fromTypeKey(experiment.type) }
-    var showCancelDialog by remember { mutableStateOf(false) }
+    var showCancelDialog by rememberSaveable { mutableStateOf(false) }
 
     val backgroundColor = when {
         experiment.isCancelled -> PageIndicatorDisabled
@@ -268,8 +269,8 @@ private fun ExperimentCard(
 
 @Composable
 private fun CancelExperimentDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    var reason by remember { mutableStateOf("") }
-    var showReasonError by remember { mutableStateOf(false) }
+    var reason by rememberSaveable { mutableStateOf("") }
+    var showReasonError by rememberSaveable { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

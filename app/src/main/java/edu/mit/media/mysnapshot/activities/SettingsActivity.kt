@@ -44,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -310,7 +311,7 @@ private fun SettingsScreen(
 @Composable
 private fun TermsStep(accepted: Boolean, onCheckedChange: (Boolean) -> Unit) {
     val scrollState = rememberScrollState()
-    var canCheck by remember { mutableStateOf(accepted) }
+    var canCheck by rememberSaveable { mutableStateOf(accepted) }
 
     LaunchedEffect(scrollState.value, scrollState.maxValue) {
         // Mirrors `TriggeringScrollView`'s `diff <= 0` trigger: fires once scrolled to the
@@ -412,7 +413,7 @@ private fun HealthConnectStep(granted: Boolean?, onConnect: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BirthdateStep(dobString: String?, onSelected: (String) -> Unit) {
-    var showPicker by remember { mutableStateOf(false) }
+    var showPicker by rememberSaveable { mutableStateOf(false) }
     val parsedDate = remember(dobString) {
         dobString?.let { runCatching { LocalDate.parse(it, STORAGE_DATE_FORMAT) }.getOrNull() }
     }
@@ -565,9 +566,9 @@ private fun NotificationStep(
     enabled: Boolean,
     onContinue: (String, Boolean) -> Unit
 ) {
-    var localTime by remember(time) { mutableStateOf(time) }
-    var localEnabled by remember(enabled) { mutableStateOf(enabled) }
-    var showPicker by remember { mutableStateOf(false) }
+    var localTime by rememberSaveable(time) { mutableStateOf(time) }
+    var localEnabled by rememberSaveable(enabled) { mutableStateOf(enabled) }
+    var showPicker by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier

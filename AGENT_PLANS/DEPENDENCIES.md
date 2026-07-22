@@ -48,7 +48,8 @@ graph TD
 |---|---|---|
 | #32, #33, #35 | **#31** | All need the custom-signal Room schema first. |
 | #34 | **#31, #32, #33** | Not end-to-end testable until the model, check-in flow, and a way to create an experiment all exist. |
-| #25 | **#19** | The portrait lock exists *because* state didn't survive recreation. Removing it before the last three ViewModels land reintroduces state loss on rotation. |
+
+*(#25 was blocked on #19 — both landed; the portrait lock is now removed.)*
 
 ### Soft ordering (not blocking, but wasteful to invert)
 
@@ -71,7 +72,7 @@ Two agents can work these concurrently only if they stay in different rows.
 | `viewmodel/` package | #19, #32, #33 | #19 adds three ViewModels; #32 restructures `CheckinViewModel`'s step list; #33 adds `CreateExperimentViewModel`. New files mostly — low collision, but #32 rewrites an existing one. |
 | `assets/experiment_types.json` + `ExperimentTypeRegistry` | #28, #31, #34 | #28 appends config entries; #31 makes the registry accept user-defined types. Small file, near-certain textual conflict. |
 | `ExperimentChooseActivity` | #28, #34 | #28 adds `chooseOrder` entries; #34 rewrites how the list is built. |
-| `AndroidManifest.xml` | #25, #18, #22 | #25 strips `screenOrientation`/`configChanges`; #18 adds a rationale activity; #22 removes legacy activities. |
+| `AndroidManifest.xml` | #18, #22 | #25 (stripped `screenOrientation`/`configChanges`) landed; #18 adds a rationale activity; #22 removes legacy activities. |
 | `activities/questions/` + `view/` | #22, #20 | #22 deletes most of this; see soft ordering above. |
 | `data/ExperimentExporter` | #35, #27 | #35 adds custom-signal fields; #27 changes what "an experiment" is. |
 | `app/build.gradle` | #23, #10 (CI emulator) | Dependency churn; conflicts are usually trivial to resolve. |
