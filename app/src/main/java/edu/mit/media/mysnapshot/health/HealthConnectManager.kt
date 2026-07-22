@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.AggregateRequest
@@ -27,6 +28,7 @@ import javax.inject.Singleton
  */
 internal interface HealthConnectGateway {
     suspend fun totalSteps(start: Instant, endExclusive: Instant): Float?
+    suspend fun totalExerciseMinutes(start: Instant, endExclusive: Instant): Float?
     suspend fun sleepSessions(start: Instant, endExclusive: Instant): List<SleepSessionRecord>
     suspend fun grantedPermissions(): Set<String>
 }
@@ -40,6 +42,16 @@ private class RealHealthConnectGateway(private val client: HealthConnectClient) 
             )
         )
         return response[StepsRecord.COUNT_TOTAL]?.toFloat()
+    }
+
+    override suspend fun totalExerciseMinutes(start: Instant, endExclusive: Instant): Float? {
+        val response = client.aggregate(
+            AggregateRequest(
+                metrics = setOf(ExerciseSessionRecord.EXERCISE_DURATION_TOTAL),
+                timeRangeFilter = TimeRangeFilter.between(start, endExclusive)
+            )
+        )
+        return response[ExerciseSessionRecord.EXERCISE_DURATION_TOTAL]?.let { it.seconds / 60f }
     }
 
     override suspend fun sleepSessions(start: Instant, endExclusive: Instant): List<SleepSessionRecord> =
@@ -56,9 +68,10 @@ private class RealHealthConnectGateway(private val client: HealthConnectClient) 
 
 /**
  * Thin wrapper around the Health Connect client -- Phase 3 replacement for the dead Jawbone
- * UP SDK (AGENT_PLANS/MODERNIZE.md). Exposes only the four signals the experiment engine
- * needs (daily step count, nightly sleep duration, sleep efficiency %, sleep start time),
- * each aligned to the *local calendar day the sleep/activity happened on* -- unlike
+ * UP SDK (AGENT_PLANS/MODERNIZE.md). Exposes only the signals the experiment engine needs
+ * (daily step count, nightly sleep duration, sleep efficiency %, sleep start time, daily
+ * exercise-session minutes), each aligned to the *local calendar day the sleep/activity
+ * happened on* -- unlike
  * check-in-derived values (see `getCheckinsValue`), Health Connect records carry their own
  * timestamps so no day-shift is needed.
  */
@@ -69,7 +82,8 @@ class HealthConnectManager @Inject constructor(
     companion object {
         val PERMISSIONS = setOf(
             HealthPermission.getReadPermission(StepsRecord::class),
-            HealthPermission.getReadPermission(SleepSessionRecord::class)
+            HealthPermission.getReadPermission(SleepSessionRecord::class),
+            HealthPermission.getReadPermission(ExerciseSessionRecord::class)
         )
     }
 
@@ -103,6 +117,14 @@ class HealthConnectManager @Inject constructor(
         val gateway = gateway ?: return nullDays(startDate, endDateExclusive)
         return perDay(startDate, endDateExclusive) { date ->
             gateway.totalSteps(date.startOfDayInstant(), date.plusDays(1).startOfDayInstant())
+        }
+    }
+
+    /** Total exercise-session duration (minutes) for each day in [startDate, endDateExclusive). */
+    suspend fun getExerciseMinutes(startDate: LocalDate, endDateExclusive: LocalDate): List<Float?> {
+        val gateway = gateway ?: return nullDays(startDate, endDateExclusive)
+        return perDay(startDate, endDateExclusive) { date ->
+            gateway.totalExerciseMinutes(date.startOfDayInstant(), date.plusDays(1).startOfDayInstant())
         }
     }
 

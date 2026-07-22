@@ -87,7 +87,8 @@ private val chooseOrder = listOf(
     "leisurehappiness",
     "stepssleepefficiency",
     "sleepdurationproductivity",
-    "sleepvariabilitystress"
+    "sleepvariabilitystress",
+    "exercisestress"
 )
 
 @Composable

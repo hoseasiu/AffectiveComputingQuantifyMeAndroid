@@ -18,9 +18,15 @@ class ExperimentTypeConfigTest {
     private fun type(key: String) = types.first { it.typeKey == key }
 
     @Test
-    fun parsesAllFourTypes() {
+    fun parsesAllBundledTypes() {
         assertEquals(
-            setOf("leisurehappiness", "sleepvariabilitystress", "sleepdurationproductivity", "stepssleepefficiency"),
+            setOf(
+                "leisurehappiness",
+                "sleepvariabilitystress",
+                "sleepdurationproductivity",
+                "stepssleepefficiency",
+                "exercisestress"
+            ),
             types.map { it.typeKey }.toSet()
         )
     }
@@ -68,6 +74,18 @@ class ExperimentTypeConfigTest {
         assertEquals("Try to walk 8000 steps today", t.formatInstruction(8000f))
         assertEquals("Try to walk 8000 steps every day", t.formatResult(8000f))
         assertEquals("8000 Steps", t.formatTarget(8000f))
+    }
+
+    @Test
+    fun exerciseStress_formatsMatchConfig() {
+        val t = type("exercisestress")
+        assertEquals(false, t.useVariability)
+        assertEquals(true, t.shouldMinimizeResult)
+        assertEquals(SignalSource.HEALTH_CONNECT_EXERCISE_MINUTES, t.inputSignal)
+        assertEquals(SignalSource.CHECKIN_STRESS, t.outputSignal)
+        assertEquals("Try to exercise 20 minutes today", t.formatInstruction(20f))
+        assertEquals("Try to exercise 20 minutes each day", t.formatResult(20f))
+        assertEquals("20 Minutes", t.formatTarget(20f))
     }
 
     @Test
