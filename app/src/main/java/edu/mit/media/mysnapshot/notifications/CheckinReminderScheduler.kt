@@ -39,8 +39,8 @@ object CheckinReminderScheduler {
 
         val target = Calendar.getInstance()
         val now = target.timeInMillis
-        target.set(Calendar.HOUR_OF_DAY, notificationTime.hourOfDay)
-        target.set(Calendar.MINUTE, notificationTime.minuteOfHour)
+        target.set(Calendar.HOUR_OF_DAY, notificationTime.hour)
+        target.set(Calendar.MINUTE, notificationTime.minute)
         target.set(Calendar.SECOND, 0)
         target.set(Calendar.MILLISECOND, 0)
         if (target.timeInMillis <= now) {

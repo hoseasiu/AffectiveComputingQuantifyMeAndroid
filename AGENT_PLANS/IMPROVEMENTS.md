@@ -41,13 +41,14 @@ on what — it is derived live, never stored here.
 | 8 | Real unit-test suite (147 tests) + `androidTest` source set | PR #36 (#21) |
 | 8 | Dead `UserProfileEntity`/`UserProfileDao` deleted | PR #30 (#24) |
 | — | Fresh-install black screen; config Continue NPE; date-picker crash | PR #14, #16 |
+| 4 | Joda-Time → `java.time` swap (engine, Room, UI, notifications) | #23 (partial) |
 
 ### Still open
 
 | § | Item | Issue |
 |---|---|---|
 | 2.2 | Finish ViewModel migration: `MainActivity`, `ExperimentComplete`, `ExperimentInstructions` | #19 |
-| 4 | Joda→`java.time`, gson, nineoldandroids/Picasso/roundedimageview/legacy-support | #23 |
+| 4 | gson bump, drop nineoldandroids/Picasso/roundedimageview/legacy-support (Joda swap landed) | #23 |
 | 6.4 | Health Connect Play-readiness: rationale activity, privacy policy, empty states | #18 |
 | 7.1 | Accessibility audit for every screen beyond check-in | #20 |
 | 7.2 | Remove portrait-only lock; rotation + tablet layouts | #25 |
@@ -94,8 +95,13 @@ lambdas. **Not visually verified on-device** (no emulator in CI, see §10) — o
 
 ## §4 — Dependencies
 
-`joda-time` is the risky one: it is used in the **engine's date logic**, which is the
-validated research algorithm. Swap it behind the test suite, never casually (#23).
+`joda-time` was the risky one: it was used throughout the **engine's date logic**, which is
+the validated research algorithm. Swapped to `java.time` behind the full test suite (#23) --
+`ExperimentEngine.kt` itself never referenced Joda directly, so the algorithm was untouched;
+the change was mechanical everywhere else (`Converters`/entities → `OffsetDateTime`, engine/
+repository/`HealthConnectManager` → `java.time.LocalDate`, the notification-time widgets →
+`java.time.LocalTime`). Still open: bump `gson`, drop `nineoldandroids`/Picasso/
+roundedimageview/legacy-support -- gated on #22 retiring their last consumers.
 
 ## §5 — Health Connect
 

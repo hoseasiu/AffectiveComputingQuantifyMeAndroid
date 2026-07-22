@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.preference.PreferenceManager
 import com.google.gson.Gson
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 /**
  * Onboarding/settings answers, persisted as a single Gson-serialized blob under
@@ -82,13 +82,15 @@ fun saveUserData(context: Context, userData: UserData?) {
     editor.apply()
 }
 
-/** `HH:mm` <-> [DateTime], the notification-time-of-day encoding used throughout Settings/schedulers. */
-fun parseNotificationTime(value: String?): DateTime? {
+private val NOTIFICATION_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+/** `HH:mm` <-> [LocalTime], the notification-time-of-day encoding used throughout Settings/schedulers. */
+fun parseNotificationTime(value: String?): LocalTime? {
     if (value == null) return null
-    return DateTimeFormat.forPattern("HH:mm").parseDateTime(value)
+    return LocalTime.parse(value, NOTIFICATION_TIME_FORMAT)
 }
 
-fun encodeNotificationTime(value: DateTime?): String? {
+fun encodeNotificationTime(value: LocalTime?): String? {
     if (value == null) return null
-    return DateTimeFormat.forPattern("HH:mm").print(value)
+    return value.format(NOTIFICATION_TIME_FORMAT)
 }

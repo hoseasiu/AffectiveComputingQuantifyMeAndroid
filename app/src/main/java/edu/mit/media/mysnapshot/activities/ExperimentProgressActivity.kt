@@ -33,8 +33,7 @@ import edu.mit.media.mysnapshot.ui.theme.FadeBlue
 import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
 import edu.mit.media.mysnapshot.ui.theme.White
 import edu.mit.media.mysnapshot.viewmodel.ExperimentProgressViewModel
-import org.joda.time.LocalDate
-import org.joda.time.format.DateTimeFormat
+import java.time.format.DateTimeFormatter
 
 /**
  * Opt-in mid-experiment progress view (AGENT_PLANS/MODERNIZE.md Phase 5.1, paper §6.2):
@@ -75,7 +74,7 @@ class ExperimentProgressActivity : ComponentActivity() {
     }
 }
 
-private val dayFormat = DateTimeFormat.forPattern("MMM d")
+private val dayFormat = DateTimeFormatter.ofPattern("MMM d")
 
 @Composable
 private fun ProgressScreen(
@@ -133,7 +132,7 @@ private fun StageProgressCard(
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             val dateRange = if (stage.start != null && stage.end != null) {
-                "${dayFormat.print(stage.start)} - ${dayFormat.print(stage.end)}"
+                "${dayFormat.format(stage.start)} - ${dayFormat.format(stage.end)}"
             } else {
                 ""
             }
@@ -152,7 +151,7 @@ private fun StageProgressCard(
             } else {
                 stage.checkins.sortedBy { it.checkinDate }.forEach { checkin ->
                     Text(
-                        text = "${dayFormat.print(LocalDate(checkin.checkinDate))}: " +
+                        text = "${dayFormat.format(checkin.checkinDate.toLocalDate())}: " +
                             "happiness ${checkin.happiness}, stress ${checkin.stress}, " +
                             "productivity ${checkin.productivity}",
                         fontSize = 13.sp,

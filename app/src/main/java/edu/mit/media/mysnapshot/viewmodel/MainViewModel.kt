@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import org.joda.time.LocalDate
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -64,8 +64,8 @@ class MainViewModel @Inject constructor(
 
             val checkins = repository.getCheckinsForExperiment(experiment.id).first()
             val today = LocalDate.now()
-            val startedToday = LocalDate(experiment.startTime) == today
-            val checkedInToday = checkins.any { LocalDate(it.checkinDate) == today }
+            val startedToday = experiment.startTime.toLocalDate() == today
+            val checkedInToday = checkins.any { it.checkinDate.toLocalDate() == today }
             val hadCheckinToday = startedToday || checkedInToday
 
             if (forceCheckin || !hadCheckinToday) {

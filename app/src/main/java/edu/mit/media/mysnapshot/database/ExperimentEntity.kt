@@ -3,7 +3,7 @@ package edu.mit.media.mysnapshot.database
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import org.joda.time.DateTime
+import java.time.OffsetDateTime
 
 /**
  * Mirrors AffectiveComputingQuantifyMeDjango's `Experiment` model (models.py). The
@@ -18,9 +18,9 @@ data class ExperimentEntity(
     val id: Int = 0,
     val type: String,
     @ColumnInfo(name = "start_time")
-    val startTime: DateTime,
+    val startTime: OffsetDateTime,
     @ColumnInfo(name = "end_time")
-    val endTime: DateTime? = null,
+    val endTime: OffsetDateTime? = null,
     @ColumnInfo(name = "current_stage")
     val currentStage: Int = 0,
     @ColumnInfo(name = "is_active")

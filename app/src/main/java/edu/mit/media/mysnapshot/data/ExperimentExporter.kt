@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import edu.mit.media.mysnapshot.database.CheckinEntity
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.ExperimentType
+import java.time.format.DateTimeFormatter
 
 /**
  * Builds the "export my data" JSON payload (AGENT_PLANS/MODERNIZE.md, "Optional: local
@@ -69,7 +70,7 @@ object ExperimentExporter {
     }
 
     fun suggestedFileName(experiment: ExperimentEntity): String {
-        val datePart = experiment.startTime.toString("yyyy-MM-dd")
+        val datePart = experiment.startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         return "quantifyme_${experiment.type}_$datePart.json"
     }
 }

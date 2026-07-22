@@ -13,8 +13,7 @@ import edu.mit.media.mysnapshot.health.FakeHealthConnectGateway
 import edu.mit.media.mysnapshot.health.HealthConnectManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.joda.time.DateTime
-import org.joda.time.LocalDate
+import java.time.LocalDate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -24,6 +23,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 /**
@@ -72,7 +72,7 @@ class ExperimentRepositoryTest {
     private fun checkinAt(experimentId: Int, date: LocalDate, leisureTime: Int = 60, happiness: Int = 5) =
         CheckinEntity(
             experimentId = experimentId,
-            checkinDate = date.toDateTimeAtStartOfDay().plusHours(8),
+            checkinDate = date.atStartOfDay(ZoneId.systemDefault()).plusHours(8).toOffsetDateTime(),
             didFollowInstructions = 1,
             happiness = happiness,
             stress = 2,
@@ -150,7 +150,7 @@ class ExperimentRepositoryTest {
         // 7-day input window [today-7, today) needs check-ins dated today-6..today. The last
         // of those (today) is recorded by submitCheckin() itself below.
         for (offset in 6 downTo 1) {
-            db.checkinDao().insert(checkinAt(id, today.minusDays(offset), leisureTime = 60, happiness = 5))
+            db.checkinDao().insert(checkinAt(id, today.minusDays(offset.toLong()), leisureTime = 60, happiness = 5))
         }
 
         val outcome = repository.submitCheckin(
@@ -324,7 +324,7 @@ class ExperimentRepositoryTest {
 
     /** A sleep session ending at 7am on [date], for [durationMinutes] with [awakeMinutes] of it spent awake. */
     private fun sleepSessionEndingOn(date: LocalDate, durationMinutes: Long, awakeMinutes: Long = 0): SleepSessionRecord {
-        val end = date.toDateTimeAtStartOfDay().plusHours(7).toDate().toInstant()
+        val end = date.atStartOfDay(ZoneId.systemDefault()).plusHours(7).toInstant()
         val start = end.minusSeconds(durationMinutes * 60)
         val stages = if (awakeMinutes > 0) {
             listOf(SleepSessionRecord.Stage(start, start.plusSeconds(awakeMinutes * 60), SleepSessionRecord.STAGE_TYPE_AWAKE))
@@ -355,7 +355,7 @@ class ExperimentRepositoryTest {
         // Input (sleep duration) comes from Health Connect, aligned to its own calendar day --
         // no day-shift needed, unlike checkins. One session ending on each of the 7 days in
         // the baseline window [today-7, today).
-        val sleepDays = (0 until 7).map { today.minusDays(7 - it) }
+        val sleepDays = (0 until 7).map { today.minusDays((7 - it).toLong()) }
         healthConnect.testGatewayOverride = FakeHealthConnectGateway(
             sessions = sleepDays.map { sleepSessionEndingOn(it, durationMinutes = 450) }
         )
@@ -363,7 +363,7 @@ class ExperimentRepositoryTest {
         // Output (productivity) is still checkin-backed, so it keeps the +1-day-shift quirk:
         // a checkin recorded on day X represents day X-1's output (see getCheckinsValue).
         for (offset in 6 downTo 1) {
-            db.checkinDao().insert(checkinAt(id, today.minusDays(offset)))
+            db.checkinDao().insert(checkinAt(id, today.minusDays(offset.toLong())))
         }
 
         val outcome = repository.submitCheckin(
@@ -398,7 +398,7 @@ class ExperimentRepositoryTest {
 
         // Both input (steps) and output (sleep efficiency) are Health Connect-backed here --
         // neither needs a checkin at all to feed the stage machine.
-        val sleepDays = (0 until 7).map { today.minusDays(7 - it) }
+        val sleepDays = (0 until 7).map { today.minusDays((7 - it).toLong()) }
         healthConnect.testGatewayOverride = FakeHealthConnectGateway(
             stepsFn = { _, _ -> 8000f },
             sessions = sleepDays.map { sleepSessionEndingOn(it, durationMinutes = 480, awakeMinutes = 24) }
@@ -479,7 +479,7 @@ class ExperimentRepositoryTest {
 
         // Output (stress) is still checkin-backed, so it keeps the +1-day-shift quirk.
         for (offset in 6 downTo 1) {
-            db.checkinDao().insert(checkinAt(id, today.minusDays(offset)))
+            db.checkinDao().insert(checkinAt(id, today.minusDays(offset.toLong())))
         }
 
         val outcome = repository.submitCheckin(

@@ -1,11 +1,11 @@
 package edu.mit.media.mysnapshot.engine
 
-import org.joda.time.DateTime
-import org.joda.time.LocalDate
+import java.time.LocalDate
+import java.time.OffsetDateTime
 
 /** Sensor/checkin-agnostic view of a single day's check-in, for feeding the engine. */
 data class CheckinRecord(
-    val time: DateTime,
+    val time: OffsetDateTime,
     val leisureTime: Float,
     val happiness: Float,
     val stress: Float,
@@ -32,7 +32,7 @@ fun getCheckinsValue(
     var date = startDate
     while (date.isBefore(endDateExclusive)) {
         val targetDate = date.plusDays(1)
-        val found = sorted.firstOrNull { LocalDate(it.time) == targetDate }
+        val found = sorted.firstOrNull { it.time.toLocalDate() == targetDate }
         results.add(found?.let(selector))
         date = date.plusDays(1)
     }

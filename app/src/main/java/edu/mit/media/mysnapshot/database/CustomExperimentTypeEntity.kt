@@ -3,7 +3,7 @@ package edu.mit.media.mysnapshot.database
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import org.joda.time.DateTime
+import java.time.OffsetDateTime
 
 /**
  * One user-authored experiment type (issue #31 -- "create your own experiment", built by
@@ -20,5 +20,5 @@ data class CustomExperimentTypeEntity(
     val typeKey: String,
     val json: String,
     @ColumnInfo(name = "created_at")
-    val createdAt: DateTime
+    val createdAt: OffsetDateTime
 )

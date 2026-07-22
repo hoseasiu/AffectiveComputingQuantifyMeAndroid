@@ -18,8 +18,8 @@ import edu.mit.media.mysnapshot.database.QuantifyMeDatabase
 import edu.mit.media.mysnapshot.engine.ExperimentTypeRegistry
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.joda.time.DateTime
-import org.joda.time.LocalDate
+import java.time.LocalDate
+import java.time.OffsetDateTime
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -90,7 +90,7 @@ class ExperimentCheckinScreenTest {
         val (datesJson, targetsJson, restartJson) = state.toJson()
         val experiment = ExperimentEntity(
             type = "leisurehappiness",
-            startTime = DateTime.now(),
+            startTime = OffsetDateTime.now(),
             selfEfficacy = 3,
             appEfficacy = 3,
             experimentEfficacy = 3,

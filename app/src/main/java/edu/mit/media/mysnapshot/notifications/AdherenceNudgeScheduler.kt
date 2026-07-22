@@ -41,8 +41,8 @@ object AdherenceNudgeScheduler {
 
         val target = Calendar.getInstance()
         val now = target.timeInMillis
-        target.set(Calendar.HOUR_OF_DAY, checkinTime.hourOfDay)
-        target.set(Calendar.MINUTE, checkinTime.minuteOfHour)
+        target.set(Calendar.HOUR_OF_DAY, checkinTime.hour)
+        target.set(Calendar.MINUTE, checkinTime.minute)
         target.set(Calendar.SECOND, 0)
         target.set(Calendar.MILLISECOND, 0)
         target.add(Calendar.HOUR_OF_DAY, OFFSET_HOURS_AFTER_CHECKIN)

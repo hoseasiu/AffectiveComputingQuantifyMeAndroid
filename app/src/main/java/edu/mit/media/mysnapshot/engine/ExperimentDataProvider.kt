@@ -1,7 +1,7 @@
 package edu.mit.media.mysnapshot.engine
 
 import edu.mit.media.mysnapshot.health.HealthConnectManager
-import org.joda.time.LocalDate
+import java.time.LocalDate
 
 /**
  * Port of each `ExperimentType`'s `get_inputs`/`get_outputs` (analysis.py). Checkin-backed
