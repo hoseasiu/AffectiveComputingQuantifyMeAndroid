@@ -122,4 +122,11 @@ either.
 
 `.github/workflows/android-ci.yml` runs `testDebugUnitTest`, `assembleDebug`,
 `assembleRelease`, `assembleDebugAndroidTest` — the last only *compiles* the instrumentation
-APK. Adding `reactivecircus/android-emulator-runner` is a known follow-up with no issue yet.
+APK.
+
+Two real gaps, neither with an issue yet:
+1. **CI is `workflow_dispatch` only** (manual, since `ebf1e65`). Nothing runs on push or PR, so
+   a branch is unverified unless someone runs the suite locally or triggers the workflow. Every
+   PR review should confirm the suite was run.
+2. **No emulator anywhere.** Adding `reactivecircus/android-emulator-runner` would make
+   `androidTest` actually execute.

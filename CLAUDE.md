@@ -95,7 +95,7 @@ commits and no PR after a day is abandoned — any agent may take it without ask
     store-ready)
   - `./gradlew testDebugUnitTest` — run the unit test suite
   - `./gradlew clean`
-- **There is now a real unit test suite** (143 tests as of issue #21, PR #36) under `app/src/test/`
+- **There is now a real unit test suite** (147 tests on `master` as of 2026-07-22) under `app/src/test/`
   — DAOs, `ExperimentEngine`/`ExperimentTypeConfig`, `ExperimentRepository` (including the three
   Health-Connect-backed experiment types), `HealthConnectManager` (via a `HealthConnectGateway`
   seam + `FakeHealthConnectGateway`, since the real client's response types have library-`internal`
@@ -105,8 +105,10 @@ commits and no PR after a day is abandoned — any agent may take it without ask
   `HiltTestApplication`) and `ExperimentCheckinScreenTest`, a Compose UI test that seeds a real
   experiment into the on-device Room DB and drives the actual check-in wizard end-to-end via
   `ActivityScenario` + Compose test APIs. CI (`.github/workflows/android-ci.yml`) runs
-  `testDebugUnitTest`/`assembleDebug`/`assembleRelease`/`assembleDebugAndroidTest` on push/PR to
-  `master` — the last one only *compiles and packages* the instrumentation test APK. **No
+  `testDebugUnitTest`/`assembleDebug`/`assembleRelease`/`assembleDebugAndroidTest` — the last one
+  only *compiles and packages* the instrumentation test APK. **CI is `workflow_dispatch` only**
+  (manual, since `ebf1e65`); it does **not** run on push or PR, so nothing verifies a branch
+  unless you run the suite locally or trigger the workflow by hand. **No
   on-device/emulator verification happens automatically anywhere in this project** — the current
   `ubuntu-latest` CI runner has no emulator, so `ExperimentCheckinScreenTest` only ever runs when a
   human (or an agent with device/adb access) launches it manually. Wiring up an emulator in CI (e.g.

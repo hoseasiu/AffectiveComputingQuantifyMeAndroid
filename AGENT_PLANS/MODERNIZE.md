@@ -724,7 +724,9 @@ All phases in the plan above are substantially complete and merged to `master`.
 - `698e1a1` — `Converters` now round-trips `DateTime` zone-faithfully (PR #10).
 - `30843fb`, `6adc07b` — broadened JVM unit-test coverage; added the `androidTest` source
   set and `HiltTestRunner` (PR #36, issue #21).
-- `7961888` — removed dead LeakCanary 1.x; CI runs on push/PR to `master`.
+- `7961888` — removed dead LeakCanary 1.x; CI wired to run on push/PR to `master`. **Later
+  reverted to manual-only** by `ebf1e65` — CI is now `workflow_dispatch` and nothing runs
+  automatically on push or PR.
 - `cf2c047`, `db2784d` — ViewModel layer for History / ExperimentProgress /
   ExperimentChoose, then the daily check-in migrated to Compose + `CheckinViewModel`, with
   scale-button accessibility semantics.
