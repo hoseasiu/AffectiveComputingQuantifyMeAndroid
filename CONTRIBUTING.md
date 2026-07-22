@@ -19,15 +19,7 @@ happens, run `gradlew.bat` from PowerShell/cmd instead.
 ## Required local config before building
 
 1. **`local.properties`** (repo root, gitignored): `sdk.dir=<path to your Android SDK>`.
-2. **`app/src/main/res/values/base_url.xml`** (gitignored): copy from
-   [`app/base_url.xml.template`](app/base_url.xml.template) — note the template now lives at
-   the module root, not under `res/values/`, because AGP's resource merger rejects any
-   non-`.xml` file inside a `res/values` directory (this used to be silently ignored under
-   the 2016-era AGP; it is a hard error under 8.x). The template must define three string
-   resources: `BASE_URL` (points at a running instance of the companion Django backend —
-   see the root README), `ACRA_USER`, `ACRA_PASSWORD` (crash-reporting basic auth). None of
-   these have real values checked in.
-3. **`keystore.properties`** (repo root, gitignored) — optional. If present, must define
+2. **`keystore.properties`** (repo root, gitignored) — optional. If present, must define
    `storeFile`, `storePassword`, `keyAlias`, `keyPassword` for a real release-signing
    keystore. If absent, `assembleRelease` falls back to signing with your local Android
    debug keystore (`~/.android/debug.keystore`) so the build still succeeds (e.g. in CI or
@@ -46,10 +38,8 @@ same commands directly instead of pushing to check:
 .\gradlew.bat assembleRelease --console=plain
 ```
 
-Prerequisites (see above): `local.properties` with `sdk.dir`, and
-`app/src/main/res/values/base_url.xml` present (a real one for local dev is fine — it just
-needs to compile, unlike CI's placeholder). `assembleRelease` falls back to your
-`~/.android/debug.keystore` if you have no `keystore.properties`, which Android Studio
+Prerequisites (see above): `local.properties` with `sdk.dir`. `assembleRelease` falls back to
+your `~/.android/debug.keystore` if you have no `keystore.properties`, which Android Studio
 normally creates on first build/run.
 
 ## Phase 0 note: why there's no literal "build on the original 2016 toolchain" step
