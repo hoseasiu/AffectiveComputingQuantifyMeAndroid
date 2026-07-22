@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import edu.mit.media.mysnapshot.database.CheckinEntity
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.ExperimentType
+import edu.mit.media.mysnapshot.engine.SignalRef
 import java.time.format.DateTimeFormatter
 
 /**
@@ -21,7 +22,9 @@ object ExperimentExporter {
         val happiness: Int,
         val stress: Int,
         val productivity: Int,
-        val leisureTime: Int
+        val leisureTime: Int,
+        val customInputValue: Float?,
+        val customOutputValue: Float?
     )
 
     data class ExperimentExport(
@@ -35,6 +38,8 @@ object ExperimentExporter {
         val resultValue: Float?,
         val resultDescription: String?,
         val resultConfidence: Float?,
+        val customInputQuestion: String?,
+        val customOutputQuestion: String?,
         val checkins: List<CheckinExport>
     )
 
@@ -55,6 +60,8 @@ object ExperimentExporter {
             resultValue = experiment.resultValue,
             resultDescription = experiment.resultValue?.let { type.formatResult(it) },
             resultConfidence = experiment.resultConfidence,
+            customInputQuestion = (type.inputSignal as? SignalRef.Custom)?.definition?.question,
+            customOutputQuestion = (type.outputSignal as? SignalRef.Custom)?.definition?.question,
             checkins = checkins.sortedBy { it.checkinDate }.map {
                 CheckinExport(
                     date = it.checkinDate.toString(),
@@ -62,7 +69,9 @@ object ExperimentExporter {
                     happiness = it.happiness,
                     stress = it.stress,
                     productivity = it.productivity,
-                    leisureTime = it.leisureTime
+                    leisureTime = it.leisureTime,
+                    customInputValue = it.customInputValue,
+                    customOutputValue = it.customOutputValue
                 )
             }
         )
