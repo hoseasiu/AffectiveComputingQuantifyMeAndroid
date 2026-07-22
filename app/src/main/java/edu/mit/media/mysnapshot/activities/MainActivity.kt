@@ -9,6 +9,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
+import edu.mit.media.mysnapshot.data.hasSetUserData
 import edu.mit.media.mysnapshot.notifications.AdherenceNudgeWorker
 import edu.mit.media.mysnapshot.notifications.CheckinReminderWorker
 import edu.mit.media.mysnapshot.viewmodel.MainEvent
@@ -23,7 +24,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (!SettingsActivity.hasSetUserData(PreferenceManager.getDefaultSharedPreferences(this))) {
+        if (!hasSetUserData(PreferenceManager.getDefaultSharedPreferences(this))) {
             startActivity(Intent(this, IntroActivity::class.java))
             finish()
             return

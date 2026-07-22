@@ -1,18 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <declare-styleable name="NoDefaultSpinner">
-        <attr name="android:entryValues" />
-    </declare-styleable>
-
-    <declare-styleable name="SelectableIcon">
-        <attr name="tintColor" format="color" />
-        <attr name="value" format="string" />
-        <attr name="image" format="reference" />
-        <attr name="text" format="string" />
-        <attr name="size" format="string" />
-    </declare-styleable>
-
     <declare-styleable name="FontTextView">
         <attr name="customtypeface" format="enum">
             <enum name="Montserrat" value="0" />
@@ -22,63 +10,6 @@
             <enum name="Raleway_Light" value="4" />
         </attr>
         <attr name="usehtml" format="boolean" />
-    </declare-styleable>
-
-    <declare-styleable name="TimePickerView">
-        <attr name="small_picker" format="boolean" />
-    </declare-styleable>
-
-    <declare-styleable name="ViewPagerCustomDuration">
-        <attr name="duration" format="integer" />
-    </declare-styleable>
-
-    <declare-styleable name="ScrollPageIndicator">
-        <attr name="tpi_padding" format="dimension" />
-        <attr name="tpi_extraPadding" format="dimension" />
-        <attr name="tpi_selectedPadding" format="dimension" />
-        <attr name="tpi_unselectedPadding" format="dimension" />
-        <attr name="tpi_extraColor" format="color" />
-        <attr name="tpi_extraRes" format="reference" />
-        <attr name="tpi_selectedInForeground" format="boolean" />
-    </declare-styleable>
-
-    <declare-styleable name="TintableImageView">
-        <attr name="imagetint" format="reference|color" />
-    </declare-styleable>
-
-    <declare-styleable name="ColoredRadioGroup">
-        <attr name="buttons" format="integer" />
-        <attr name="leftTint" format="reference|color" />
-        <attr name="rightTint" format="reference|color" />
-    </declare-styleable>
-
-    <!-- Vendored from com.flyco.pageindicator (FlycoPageIndicator_Lib, MIT license,
-         https://github.com/H07000223/FlycoPageIndicator) since the original jcenter-hosted
-         artifact and its jitpack build are both dead; see CONTRIBUTING.md. -->
-    <declare-styleable name="RoundCornerIndicaor">
-        <attr name="rci_width" format="dimension"/>
-        <attr name="rci_height" format="dimension"/>
-        <attr name="rci_gap" format="dimension"/>
-        <attr name="rci_cornerRadius" format="dimension"/>
-        <attr name="rci_strokeWidth" format="dimension"/>
-        <attr name="rci_selectColor" format="color"/>
-        <attr name="rci_unselectColor" format="color"/>
-        <attr name="rci_strokeColor" format="color"/>
-        <attr name="rci_isSnap" format="boolean"/>
-    </declare-styleable>
-
-    <declare-styleable name="FlycoPageIndicaor">
-        <attr name="fpi_width" format="dimension"/>
-        <attr name="fpi_height" format="dimension"/>
-        <attr name="fpi_gap" format="dimension"/>
-        <attr name="fpi_strokeWidth" format="dimension"/>
-        <attr name="fpi_strokeColor" format="color"/>
-        <attr name="fpi_isSnap" format="boolean"/>
-        <attr name="fpi_selectColor" format="color"/>
-        <attr name="fpi_unselectColor" format="color"/>
-        <attr name="fpi_cornerRadius" format="dimension"/>
-        <attr name="fpi_selectRes" format="reference"/>
-        <attr name="fpi_unselectRes" format="reference"/>
     </declare-styleable>
 
 </resources>

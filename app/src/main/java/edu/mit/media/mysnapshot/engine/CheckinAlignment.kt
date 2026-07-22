@@ -9,7 +9,11 @@ data class CheckinRecord(
     val leisureTime: Float,
     val happiness: Float,
     val stress: Float,
-    val productivity: Float
+    val productivity: Float,
+    // Answers to a custom-signal experiment type's input/output question (#31), null for
+    // every built-in-only checkin and for days the custom question was skipped/missed.
+    val customInputValue: Float? = null,
+    val customOutputValue: Float? = null
 )
 
 /**
@@ -21,7 +25,7 @@ fun getCheckinsValue(
     checkins: List<CheckinRecord>,
     startDate: LocalDate,
     endDateExclusive: LocalDate,
-    selector: (CheckinRecord) -> Float
+    selector: (CheckinRecord) -> Float?
 ): List<Float?> {
     val sorted = checkins.sortedBy { it.time }
     val results = mutableListOf<Float?>()

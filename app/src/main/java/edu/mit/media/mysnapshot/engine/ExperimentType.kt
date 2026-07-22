@@ -33,6 +33,63 @@ enum class SignalSource {
     HEALTH_CONNECT_EXERCISE_MINUTES
 }
 
+/** How a [CustomSignalDef]'s answer is collected and stored (issue #31/#32). */
+enum class CustomValueKind {
+    /** A 1-7 Likert-style scale, matching the built-in checkin signals' native range. */
+    SCALE_1_7,
+    /** A non-negative integer count (e.g. "cups of coffee"). */
+    COUNT,
+    /** A duration entered in minutes. */
+    DURATION_MINUTES
+}
+
+/**
+ * A user-authored signal that doesn't exist in [SignalSource]'s fixed vocabulary -- e.g. a
+ * self-invented "cups of coffee" question. Answers are collected daily at checkin time (#32)
+ * and stored in [edu.mit.media.mysnapshot.database.CheckinEntity]'s `customInputValue`/
+ * `customOutputValue` columns, always in the type's native unit (same convention as every
+ * built-in signal).
+ */
+data class CustomSignalDef(
+    val label: String,
+    val question: String,
+    val kind: CustomValueKind,
+    val lowLabel: String? = null,
+    val highLabel: String? = null,
+    val unitLabel: String? = null
+)
+
+/**
+ * What feeds one of an [ExperimentType]'s two signal slots (input/output): either one of the
+ * app's built-in [SignalSource]s, or a user-defined [CustomSignalDef] (issue #31). Every
+ * experiment type has exactly two signal slots and never more, so this -- rather than a
+ * generic key-value schema -- is enough to support fully custom, user-defined signals.
+ */
+sealed class SignalRef {
+    data class Builtin(val source: SignalSource) : SignalRef()
+    data class Custom(val definition: CustomSignalDef) : SignalRef()
+}
+
+/**
+ * A short human-readable description of what this signal measures -- used by
+ * `ExperimentIntroActivity`'s generic (no-dedicated-resources) intro screen to describe a
+ * type's input/output at runtime instead of the baked-in copy a per-type XML would have.
+ */
+fun SignalRef.describe(): String = when (this) {
+    is SignalRef.Custom -> definition.question
+    is SignalRef.Builtin -> when (source) {
+        SignalSource.CHECKIN_LEISURE_TIME -> "your leisure time"
+        SignalSource.CHECKIN_HAPPINESS -> "your happiness"
+        SignalSource.CHECKIN_STRESS -> "your stress level"
+        SignalSource.CHECKIN_PRODUCTIVITY -> "your productivity"
+        SignalSource.HEALTH_CONNECT_SLEEP_START_MINUTE -> "when you go to sleep"
+        SignalSource.HEALTH_CONNECT_SLEEP_DURATION_MINUTES -> "how long you sleep"
+        SignalSource.HEALTH_CONNECT_STEPS -> "your daily steps"
+        SignalSource.HEALTH_CONNECT_SLEEP_EFFICIENCY -> "your sleep efficiency"
+        SignalSource.HEALTH_CONNECT_EXERCISE_MINUTES -> "your exercise minutes"
+    }
+}
+
 /**
  * How a raw engine value (always stored/compared in the type's native unit -- minutes,
  * steps, etc.) is rendered into display text. Ported verbatim from what were previously
@@ -92,8 +149,8 @@ data class ExperimentType(
     val useVariability: Boolean,
     val shouldMinimizeResult: Boolean,
     val usesSleepData: Boolean,
-    val inputSignal: SignalSource,
-    val outputSignal: SignalSource,
+    val inputSignal: SignalRef,
+    val outputSignal: SignalRef,
     val targetFormatKind: FormatKind,
     val resultFormatKind: FormatKind,
     val instructionTemplate: String,

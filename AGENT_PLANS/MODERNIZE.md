@@ -747,10 +747,12 @@ verified on-device"; treat those notes as real gaps.
 
 ## What remains
 
-Phase 4 is deliberately incomplete: the onboarding wizard (`IntroActivity`,
-`SettingsActivity`, `ExperimentConfigActivity`) still rides the legacy Java
-`QuestionActivity`/`ViewPager` framework and the `view/` custom-widget zoo. That is tracked
-as issue #22, not as a Phase 4 regression.
+Phase 4's one deferred piece has landed: the onboarding wizard (`IntroActivity`,
+`IntroThanksActivity`, `SettingsActivity`, `ExperimentConfigActivity`) is now Compose +
+`SettingsViewModel`/`ExperimentConfigViewModel`, and the legacy Java `QuestionActivity`/
+`ViewPager` framework, `activities/questions/`, and the `view/` custom-widget zoo (except
+`FontTextView`, still used by the still-legacy `ExperimentComplete`/`ExperimentCreatedActivity`,
+#19's scope) are deleted (issue #22). Not visually verified on-device (no emulator in CI).
 
 The live backlog is **`IMPROVEMENTS.md`** plus the GitHub issues; blocking relationships and
 merge-conflict risk are in **`DEPENDENCIES.md`**.
