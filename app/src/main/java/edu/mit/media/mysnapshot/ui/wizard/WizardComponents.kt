@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -235,7 +236,7 @@ fun DropdownStep(
     selected: String?,
     onSelect: (String) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     val selectedLabel = selected
         ?.let { value -> values.indexOf(value).takeIf { it >= 0 } }
         ?.let { labels[it] }

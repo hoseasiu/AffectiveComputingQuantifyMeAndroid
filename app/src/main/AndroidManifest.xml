@@ -24,9 +24,7 @@
 
         <activity
             android:name="edu.mit.media.mysnapshot.activities.MainActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:exported="true"
             android:label="@string/title_activity_main" >
             <intent-filter>
@@ -37,86 +35,62 @@
         </activity>
         <activity
             android:name="edu.mit.media.mysnapshot.activities.SettingsActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="Settings" >
         </activity>
         <activity
             android:name="edu.mit.media.mysnapshot.activities.IntroActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
         <activity
             android:name="edu.mit.media.mysnapshot.activities.IntroThanksActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
 
         <activity
             android:name=".activities.ExperimentChooseActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
         <activity
             android:name=".activities.ExperimentIntroActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
         <activity
             android:name="edu.mit.media.mysnapshot.activities.ExperimentConfigActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
         <activity
             android:name="edu.mit.media.mysnapshot.activities.ExperimentCreatedActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
         <activity
             android:name="edu.mit.media.mysnapshot.activities.ExperimentCheckinActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
         <activity
             android:name=".activities.ExperimentInstructionsActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
         <activity
             android:name="edu.mit.media.mysnapshot.activities.ExperimentCompleteActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
         <activity
             android:name="edu.mit.media.mysnapshot.activities.HistoryActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
         <activity
             android:name="edu.mit.media.mysnapshot.activities.ExperimentProgressActivity"
-            android:screenOrientation="portrait"
-            android:configChanges="keyboardHidden|orientation"
             android:label="@string/title_activity_main" >
         </activity>
 

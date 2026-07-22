@@ -43,16 +43,16 @@ on what — it is derived live, never stored here.
 | — | Fresh-install black screen; config Continue NPE; date-picker crash | PR #14, #16 |
 | 7.4 | Hardcoded check-in wizard strings externalized to `strings.xml`; French/Spanish locales added | (#26) |
 | 4 | Joda-Time → `java.time` swap (engine, Room, UI, notifications) | #23 (partial) |
+| 2.2 | Finish ViewModel migration: `MainActivity`, `ExperimentComplete`, `ExperimentInstructions` | PR #40 (#19) |
+| 7.2 | Portrait-only lock + `configChanges` overrides removed from all 13 activities; state-holding `remember`s promoted to `rememberSaveable`; legacy intro/created screens wrapped in `ScrollView` so long copy doesn't clip in landscape | (#25) |
 
 ### Still open
 
 | § | Item | Issue |
 |---|---|---|
-| 2.2 | Finish ViewModel migration: `MainActivity`, `ExperimentComplete`, `ExperimentInstructions` | #19 |
 | 4 | gson bump, drop nineoldandroids/Picasso/roundedimageview/legacy-support (Joda swap landed) | #23 |
 | 6.4 | Health Connect Play-readiness: rationale activity, privacy policy, empty states | #18 |
 | 7.1 | Accessibility audit for every screen beyond check-in | #20 |
-| 7.2 | Remove portrait-only lock; rotation + tablet layouts | #25 |
 | 7.3 | Support multiple concurrent experiments | #27 |
 | 7.5 | More built-in experiments recombining existing signals | #28 (PR #38 open) |
 | 9 | User-defined custom experiment signals (epic) | #31–#35 |
@@ -113,8 +113,17 @@ Play listing.
 ## §7 — Product & polish
 
 - **7.1 Accessibility** — only check-in is audited; everything else is unaudited (#20).
-- **7.2 Rotation** — 13 `configChanges` + `screenOrientation="portrait"` overrides were
-  workarounds for the missing ViewModel layer. **Depends on §2.2 / #19** (#25).
+- **7.2 Rotation** — the 13 `configChanges` + `screenOrientation="portrait"` overrides that
+  worked around the missing ViewModel layer are gone now that §2.2/#19 landed (#25). Screens
+  already on ViewModels survive recreation for free; the handful of transient Compose
+  `remember`s that held real user input (check-in/settings dropdowns, the history
+  cancel-experiment reason dialog, the notification-time picker) were promoted to
+  `rememberSaveable` so they don't reset on rotation either. Legacy XML screens
+  (`ExperimentCreatedActivity`, the per-type `ExperimentIntroActivity` layouts) had their
+  static copy wrapped in a `ScrollView` so long text can't get clipped behind the bottom
+  button in landscape. **Not visually verified on-device/tablet** — no emulator in CI (§10);
+  someone with a physical device or emulator should sanity-check rotation and a large-screen
+  layout before considering this fully closed.
 - **7.3 Concurrency** — single-active-experiment model is enforced today (#27).
 - **7.4 Localization** — hardcoded Compose check-in wizard strings (and the ViewModel-built
   intro/sleep-explanation text) are now in `strings.xml`; French (`values-fr`) and Spanish
