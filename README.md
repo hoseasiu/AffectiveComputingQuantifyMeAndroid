@@ -47,7 +47,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full local build setup, includi
 
 * `engine/` — the ported single-case-experiment algorithm (stage sequencing, target computation, stability/restart rules, confidence calculation), driven by `experiment_types.json`. Pure Kotlin, no Android dependency.
 * `data/` — `ExperimentRepository` (the on-device replacement for the old REST API) and `ExperimentExporter`.
-* `database/` — Room entities and DAOs (`ExperimentEntity`, `CheckinEntity`, `UserProfileEntity`).
+* `database/` — Room entities and DAOs (`ExperimentEntity`, `CheckinEntity`).
 * `health/` — `HealthConnectManager`, wrapping Health Connect reads for steps and sleep.
 * `activities/` + `viewmodel/` — the Compose screens and their `@HiltViewModel`s (choose experiment → intro → config → daily check-in → complete/history/progress).
 * `notifications/` — `WorkManager`-based daily check-in reminder and mid-day adherence nudge.

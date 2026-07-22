@@ -4,7 +4,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import edu.mit.media.mysnapshot.database.CheckinEntity
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.database.QuantifyMeDatabase
-import edu.mit.media.mysnapshot.database.UserProfileEntity
 import edu.mit.media.mysnapshot.engine.CheckinOutcome
 import edu.mit.media.mysnapshot.engine.CheckinRecord
 import edu.mit.media.mysnapshot.engine.ExperimentDataProvider
@@ -35,7 +34,6 @@ class ExperimentRepository @Inject constructor(
 ) {
     private val experimentDao = database.experimentDao()
     private val checkinDao = database.checkinDao()
-    private val userProfileDao = database.userProfileDao()
 
     suspend fun createExperiment(
         type: ExperimentType,
@@ -69,17 +67,6 @@ class ExperimentRepository @Inject constructor(
 
     fun getCheckinsForExperiment(experimentId: Int): Flow<List<CheckinEntity>> =
         checkinDao.getCheckinsForExperiment(experimentId)
-
-    fun getUserProfile(): Flow<UserProfileEntity?> = userProfileDao.getUserProfile()
-
-    suspend fun updateUserProfile(profile: UserProfileEntity) {
-        val existing = userProfileDao.getUserProfile().firstOrNull()
-        if (existing != null) {
-            userProfileDao.update(profile.copy(id = existing.id))
-        } else {
-            userProfileDao.insert(profile)
-        }
-    }
 
     suspend fun cancelExperiment(experimentId: Int) {
         val experiment = experimentDao.getById(experimentId).firstOrNull()
