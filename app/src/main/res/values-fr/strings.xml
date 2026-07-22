@@ -134,4 +134,10 @@ En cliquant sur "J\'accepte", vous reconnaissez que cette application fonctionne
     <string name="checkin_leisure_select_option_label">Veuillez sélectionner une option</string>
     <string name="checkin_leisure_select_description">%1$s. Veuillez sélectionner une option. Actuellement %2$s</string>
 
+    <string name="checkin_custom_scale_label_low">Faible</string>
+    <string name="checkin_custom_scale_label_high">Élevé</string>
+    <string name="checkin_custom_numeric_label">Entrez une valeur</string>
+    <string name="checkin_custom_numeric_unanswered">pas encore répondu</string>
+    <string name="checkin_custom_numeric_description">%1$s. Actuellement %2$s</string>
+
 </resources>

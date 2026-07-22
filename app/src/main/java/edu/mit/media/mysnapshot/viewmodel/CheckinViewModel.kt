@@ -9,7 +9,9 @@ import edu.mit.media.mysnapshot.R
 import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.engine.CheckinOutcome
+import edu.mit.media.mysnapshot.engine.CustomSignalDef
 import edu.mit.media.mysnapshot.engine.ExperimentType
+import edu.mit.media.mysnapshot.engine.SignalRef
 import edu.mit.media.mysnapshot.health.HealthConnectManager
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -35,6 +37,22 @@ enum class CheckinStep {
     INTRO, DID_FOLLOW_DIRECTIONS, LEISURE, HAPPY, STRESS, PRODUCTIVITY
 }
 
+/** Which of an [ExperimentType]'s two signal slots a [CheckinQuestionSpec] answers -- decides
+ * whether the answer is submitted as `customInputValue` or `customOutputValue` (issue #32). */
+enum class CustomSlot { INPUT, OUTPUT }
+
+/**
+ * One custom-signal wizard page appended after the five built-in pages, derived from an
+ * experiment type's [SignalRef.Custom] input and/or output slot (issue #31/#32). [id] is
+ * stable per slot (not per position) so [CheckinViewModel.onCustomAnswer] can route an answer
+ * correctly regardless of step index.
+ */
+data class CheckinQuestionSpec(
+    val id: String,
+    val slot: CustomSlot,
+    val definition: CustomSignalDef
+)
+
 /**
  * Screen state for [edu.mit.media.mysnapshot.activities.ExperimentCheckinActivity].
  *
@@ -44,6 +62,12 @@ enum class CheckinStep {
  * and the leisure value are nullable until answered; each holds exactly the value that will be
  * sent to [ExperimentRepository.submitCheckin] (0-based index for the scales, minutes string
  * for leisure), so there's no separate "display value" vs "submitted value" to keep in sync.
+ *
+ * `customQuestions` is empty for every experiment type without a [SignalRef.Custom] slot --
+ * zero behavior change for the four original experiments and every builtin-signal type added
+ * since. When non-empty, those pages are appended after [CheckinStep.PRODUCTIVITY] and their
+ * answers collected into `customAnswers` (keyed by [CheckinQuestionSpec.id]) via the generic
+ * [CheckinViewModel.onCustomAnswer], instead of a dedicated named field per question.
  */
 data class CheckinUiState(
     val isLoading: Boolean = true,
@@ -56,8 +80,12 @@ data class CheckinUiState(
     val stress: Int? = null,
     val productivity: Int? = null,
     val leisureValue: String? = null,
+    val customQuestions: List<CheckinQuestionSpec> = emptyList(),
+    val customAnswers: Map<String, Float> = emptyMap(),
     val isSubmitting: Boolean = false
-)
+) {
+    val totalSteps: Int get() = CheckinStep.entries.size + customQuestions.size
+}
 
 /** One-shot side effects the Activity must perform (Intents; not VM-testable). */
 sealed interface CheckinEvent {
@@ -111,7 +139,8 @@ class CheckinViewModel @Inject constructor(
                 it.copy(
                     isLoading = false,
                     experimentType = type,
-                    introText = buildIntroText(sleepExplanation)
+                    introText = buildIntroText(sleepExplanation),
+                    customQuestions = customQuestionSpecs(type)
                 )
             }
 
@@ -166,6 +195,16 @@ class CheckinViewModel @Inject constructor(
         return introText
     }
 
+    /** Zero or more custom-signal pages, one per [SignalRef.Custom] slot the type actually has. */
+    private fun customQuestionSpecs(type: ExperimentType): List<CheckinQuestionSpec> = buildList {
+        (type.inputSignal as? SignalRef.Custom)?.let {
+            add(CheckinQuestionSpec("custom_input", CustomSlot.INPUT, it.definition))
+        }
+        (type.outputSignal as? SignalRef.Custom)?.let {
+            add(CheckinQuestionSpec("custom_output", CustomSlot.OUTPUT, it.definition))
+        }
+    }
+
     fun onOpenHealthConnect() {
         viewModelScope.launch { eventChannel.send(CheckinEvent.OpenHealthConnect) }
     }
@@ -199,8 +238,8 @@ class CheckinViewModel @Inject constructor(
 
     fun onProductivitySelected(index: Int) {
         _uiState.update { it.copy(productivity = index) }
-        // Productivity is the last step -- mirrors the legacy `onPageComplete()` finding
-        // `adapter.getTotalCount() == viewPager.getCurrentItem() + 1` and calling `onFinish()`.
+        // Productivity is the last *builtin* step; advance() itself decides whether that's also
+        // the last step overall, since 0-2 custom-signal pages (issue #32) may follow it.
         advance(CheckinStep.PRODUCTIVITY.ordinal)
     }
 
@@ -212,21 +251,33 @@ class CheckinViewModel @Inject constructor(
         }
     }
 
+    /** Generic handler for the custom-signal pages appended after [CheckinStep.PRODUCTIVITY]
+     * (issue #32) -- routes the answer by [specId] rather than a dedicated named field/callback
+     * per question, since a type's custom signals aren't known until [load] resolves them. */
+    fun onCustomAnswer(specId: String, value: Float) {
+        val state = _uiState.value
+        val index = state.customQuestions.indexOfFirst { it.id == specId }
+        if (index < 0) return
+        _uiState.update { it.copy(customAnswers = it.customAnswers + (specId to value)) }
+        advance(CheckinStep.entries.size + index)
+    }
+
     /**
      * Direct port of `QuestionActivity.onPageComplete(forceSlide)`: if the answered page was
      * the current reveal frontier, unlock the next page immediately and slide to it after the
      * same 150ms `waitThenSlidePage()` delay; otherwise only slide if [forceSlide] was requested
-     * (only the intro's continue button does this). The final step (productivity) submits
-     * instead of revealing a seventh page, matching the legacy "no more pages -> onFinish()" path.
+     * (only the intro's continue button does this). The final step submits instead of revealing
+     * another page, matching the legacy "no more pages -> onFinish()" path -- which step is
+     * last is dynamic now, since 0-2 custom-signal pages (issue #32) may follow productivity.
      */
     private fun advance(step: Int, forceSlide: Boolean = false) {
-        val lastStep = CheckinStep.entries.size - 1
+        val state = _uiState.value
+        val lastStep = state.totalSteps - 1
         if (step == lastStep) {
             submit()
             return
         }
 
-        val state = _uiState.value
         val isFrontier = state.revealedSteps == step + 1
         if (isFrontier) {
             _uiState.update { it.copy(revealedSteps = it.revealedSteps + 1) }
@@ -249,6 +300,15 @@ class CheckinViewModel @Inject constructor(
         val stress = state.stress ?: return
         val productivity = state.productivity ?: return
         val leisure = state.leisureValue?.toIntOrNull() ?: return
+        // Every appended custom-signal page (issue #32) must be answered too -- mirrors the
+        // ?: return guards above for the builtin fields.
+        if (state.customQuestions.any { it.id !in state.customAnswers }) return
+        val customInputValue = state.customQuestions
+            .firstOrNull { it.slot == CustomSlot.INPUT }
+            ?.let { state.customAnswers[it.id] }
+        val customOutputValue = state.customQuestions
+            .firstOrNull { it.slot == CustomSlot.OUTPUT }
+            ?.let { state.customAnswers[it.id] }
 
         _uiState.update { it.copy(isSubmitting = true) }
 
@@ -259,7 +319,9 @@ class CheckinViewModel @Inject constructor(
                 happiness = happiness,
                 stress = stress,
                 productivity = productivity,
-                leisureTime = leisure
+                leisureTime = leisure,
+                customInputValue = customInputValue,
+                customOutputValue = customOutputValue
             )
 
             _uiState.update { it.copy(isSubmitting = false) }
