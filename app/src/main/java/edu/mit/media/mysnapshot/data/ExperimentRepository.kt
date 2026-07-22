@@ -2,6 +2,7 @@ package edu.mit.media.mysnapshot.data
 
 import dagger.hilt.android.qualifiers.ApplicationContext
 import edu.mit.media.mysnapshot.database.CheckinEntity
+import edu.mit.media.mysnapshot.database.CustomExperimentTypeEntity
 import edu.mit.media.mysnapshot.database.ExperimentEntity
 import edu.mit.media.mysnapshot.database.QuantifyMeDatabase
 import edu.mit.media.mysnapshot.engine.CheckinOutcome
@@ -9,6 +10,7 @@ import edu.mit.media.mysnapshot.engine.CheckinRecord
 import edu.mit.media.mysnapshot.engine.ExperimentDataProvider
 import edu.mit.media.mysnapshot.engine.ExperimentEngine
 import edu.mit.media.mysnapshot.engine.ExperimentType
+import edu.mit.media.mysnapshot.engine.ExperimentTypeRegistry
 import edu.mit.media.mysnapshot.health.HealthConnectManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -34,6 +36,32 @@ class ExperimentRepository @Inject constructor(
 ) {
     private val experimentDao = database.experimentDao()
     private val checkinDao = database.checkinDao()
+    private val customExperimentTypeDao = database.customExperimentTypeDao()
+
+    /**
+     * Reads every user-created experiment type from Room and merges them into
+     * [ExperimentTypeRegistry] alongside the bundled config. Invoked from
+     * `MyApplication.onCreate()` (so `ExperimentType.fromTypeKey`/`getAllTypes` see custom
+     * types from process start) and again after any custom-type create (#33) so a newly
+     * authored type is immediately usable without a restart.
+     */
+    suspend fun loadCustomTypes() {
+        val types = customExperimentTypeDao.getAll().first()
+            .map { ExperimentTypeRegistry.parseCustomTypeJson(it.json) }
+        ExperimentTypeRegistry.refreshCustomTypes(types)
+    }
+
+    /** Persists a newly authored custom experiment type and refreshes the registry with it. */
+    suspend fun createCustomType(type: ExperimentType) {
+        customExperimentTypeDao.insert(
+            CustomExperimentTypeEntity(
+                typeKey = type.typeKey,
+                json = ExperimentTypeRegistry.toCustomTypeJson(type),
+                createdAt = DateTime.now()
+            )
+        )
+        loadCustomTypes()
+    }
 
     suspend fun createExperiment(
         type: ExperimentType,
@@ -185,7 +213,11 @@ class ExperimentRepository @Inject constructor(
         happiness: Int,
         stress: Int,
         productivity: Int,
-        leisureTime: Int
+        leisureTime: Int,
+        // Populated only when the experiment's type has a SignalRef.Custom input/output slot
+        // -- the data-driven checkin wizard that collects these lives in #32.
+        customInputValue: Float? = null,
+        customOutputValue: Float? = null
     ): CheckinOutcome {
         checkinDao.insert(
             CheckinEntity(
@@ -195,7 +227,9 @@ class ExperimentRepository @Inject constructor(
                 happiness = happiness,
                 stress = stress,
                 productivity = productivity,
-                leisureTime = leisureTime
+                leisureTime = leisureTime,
+                customInputValue = customInputValue,
+                customOutputValue = customOutputValue
             )
         )
 
@@ -327,6 +361,8 @@ class ExperimentRepository @Inject constructor(
         leisureTime = leisureTime.toFloat(),
         happiness = happiness.toFloat(),
         stress = stress.toFloat(),
-        productivity = productivity.toFloat()
+        productivity = productivity.toFloat(),
+        customInputValue = customInputValue,
+        customOutputValue = customOutputValue
     )
 }

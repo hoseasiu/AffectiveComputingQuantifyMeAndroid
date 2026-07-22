@@ -108,6 +108,19 @@ android {
         compose true
     }
 
+    // Room schema export (issue #31): version = 2 is now backed by a real MIGRATION_1_2
+    // instead of fallbackToDestructiveMigration(), and MigrationTestHelper (database/
+    // MigrationTest.kt) needs the exported schema JSON on the test classpath to build a
+    // genuine version-1 database to migrate from. Robolectric's unit-test asset merging
+    // (includeAndroidResources = true, see testOptions below) only picks up the `main`
+    // variant's assets, not a JVM-test-only source set, so this has to live on `main` even
+    // though it's really test infrastructure -- the standard Room recipe for this.
+    sourceSets {
+        main {
+            assets.srcDirs += files("$projectDir/schemas".toString())
+        }
+    }
+
     composeOptions {
         // Matches the kotlin-gradle-plugin version pinned in the root build.gradle (1.9.23).
         kotlinCompilerExtensionVersion '1.5.13'
@@ -201,4 +214,12 @@ dependencies {
 
     // Health Connect (Phase 3 replacement for the dead Jawbone UP SDK)
     implementation 'androidx.health.connect:connect-client:1.1.0-alpha07'
+}
+
+// Room schema export (issue #31): exportSchema = true needs somewhere to write the schema
+// JSON so MigrationTestHelper (database/MigrationTest.kt) can verify MIGRATION_1_2 against it.
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
 }
