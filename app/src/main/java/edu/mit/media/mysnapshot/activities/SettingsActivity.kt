@@ -1,390 +1,666 @@
 package edu.mit.media.mysnapshot.activities
 
 import android.Manifest
-import android.app.DialogFragment
-import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
-import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
-import android.os.Build
-import android.preference.PreferenceManager
-import android.view.View
+import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import androidx.fragment.app.Fragment
+import androidx.activity.viewModels
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringArrayResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.health.connect.client.PermissionController
-import com.google.gson.Gson
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.R
-import edu.mit.media.mysnapshot.activities.fragments.CreditsFragment
-import edu.mit.media.mysnapshot.activities.questions.QuestionActivity
-import edu.mit.media.mysnapshot.activities.questions.QuestionListener
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionCheckboxFragment
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionChoiceFragment
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionDateFragment
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionFragment
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionHealthConnectFragment
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionNotificationFragment
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionRadioGroupFragment
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionSpinnerFragment
 import edu.mit.media.mysnapshot.health.HealthConnectManager
-import edu.mit.media.mysnapshot.notifications.AdherenceNudgeScheduler
-import edu.mit.media.mysnapshot.notifications.CheckinReminderScheduler
-import edu.mit.media.mysnapshot.view.SelectableIcon
-import java.util.TimeZone
+import edu.mit.media.mysnapshot.ui.theme.FadeBlue
+import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
+import edu.mit.media.mysnapshot.ui.theme.RadioGreen
+import edu.mit.media.mysnapshot.ui.theme.RadioRed
+import edu.mit.media.mysnapshot.ui.wizard.DropdownStep
+import edu.mit.media.mysnapshot.ui.wizard.RadioScaleStep
+import edu.mit.media.mysnapshot.ui.wizard.StepDotsIndicator
+import edu.mit.media.mysnapshot.viewmodel.SettingsEvent
+import edu.mit.media.mysnapshot.viewmodel.SettingsStep
+import edu.mit.media.mysnapshot.viewmodel.SettingsUiState
+import edu.mit.media.mysnapshot.viewmodel.SettingsViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
+/**
+ * Onboarding + "edit existing settings" wizard (AGENT_PLANS/IMPROVEMENTS.md 3.2): a 10-step
+ * progressive-reveal wizard in onboarding mode, or every step revealed at once with an
+ * explicit Save button when revisiting Settings -- now Compose + [SettingsViewModel] instead
+ * of the legacy `QuestionActivity`/`ViewPager` + the 8 live `Question*Fragment` classes. See
+ * [SettingsViewModel]'s doc comments for how each legacy quirk (the two-mode
+ * `isBuildingData` gate, the reveal-frontier auto-advance, the terms-checkbox lock) was
+ * ported.
+ */
 @AndroidEntryPoint
-class SettingsActivity : QuestionActivity() {
+class SettingsActivity : ComponentActivity() {
 
-    lateinit var sharedPreferences: SharedPreferences
-    var userData: UserData? = null
-
-    lateinit var terms: QuestionCheckboxFragment
-    lateinit var healthConnect: QuestionHealthConnectFragment
-    lateinit var notification: QuestionNotificationFragment
-    lateinit var birthdate: QuestionDateFragment
-    lateinit var race: QuestionSpinnerFragment
-    lateinit var genders: QuestionChoiceFragment
-    lateinit var happy: QuestionRadioGroupFragment
-    lateinit var stress: QuestionRadioGroupFragment
-    lateinit var activityLevel: QuestionSpinnerFragment
-    lateinit var sleepQuality: QuestionRadioGroupFragment
+    private val viewModel: SettingsViewModel by viewModels()
 
     private val healthConnectPermissionLauncher = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
     ) { grantedPermissions ->
-        healthConnect.onHealthConnectPermissionResult(
-            grantedPermissions.containsAll(HealthConnectManager.PERMISSIONS)
-        )
-    }
-
-    fun requestHealthConnectPermissions() {
-        healthConnectPermissionLauncher.launch(HealthConnectManager.PERMISSIONS)
+        viewModel.onHealthConnectPermissionResult(grantedPermissions.containsAll(HealthConnectManager.PERMISSIONS))
     }
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* no-op either way -- CheckinReminderWorker checks the permission again before notifying */ }
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-    override fun getLayoutId(): Int = R.layout.activity_settings
+        viewModel.load()
 
-    override fun initFragments(fragments: MutableList<Fragment>, icons: MutableList<Drawable>) {
-        initTerms(fragments)
-        initHealthConnect(fragments)
-        initBirthdate(fragments)
-        initRace(fragments)
-        initGenders(fragments)
-        initNotification(fragments)
-        initHappy(fragments)
-        initStress(fragments)
-        initActivity(fragments)
-        initSleepQuality(fragments)
+        setContent {
+            QuantifyMeTheme {
+                val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-        findViewById<View>(R.id.title).setOnClickListener { showCreditsDialog() }
-    }
-
-    override fun loadInitialData(): Boolean {
-        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
-
-        val loaded = loadUserData(this)
-        userData = loaded.userData
-
-        if (!loaded.existed) {
-            findViewById<View>(R.id.controls).visibility = View.GONE
-        } else {
-            findViewById<View>(R.id.backbutton).setOnClickListener { finish() }
-            findViewById<View>(R.id.savebutton).setOnClickListener { onFinish() }
-        }
-
-        return loaded.existed
-    }
-
-    override fun onFinish() {
-        getDataFromQuestions()
-
-        val timezone = TimeZone.getDefault().id
-        userData!!.timezone = timezone
-
-        saveUserData()
-        if (userData!!.notificationData!!.notificationSet) {
-            requestNotificationPermissionIfNeeded()
-        }
-        CheckinReminderScheduler.schedule(this)
-        AdherenceNudgeScheduler.schedule(this)
-
-        if (isBuildingData()) {
-            val intent = Intent(this@SettingsActivity, IntroThanksActivity::class.java)
-            startActivity(intent)
-
-            finish()
-            overridePendingTransition(0, 0)
-        } else {
-            Toast.makeText(this, "Saved!", Toast.LENGTH_LONG).show()
-            val intent = Intent(this@SettingsActivity, MainActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun initGenders(fragments: MutableList<Fragment>) {
-        genders = QuestionChoiceFragment()
-        genders.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_gender, "What's your gender?"))
-        genders.addChoice(SelectableIcon.IconChoice("Male", R.drawable.question_icon_male, "m", resources.getColor(R.color.gender_male)))
-            .addChoice(SelectableIcon.IconChoice("Female", R.drawable.question_icon_female, "f", resources.getColor(R.color.gender_female)))
-        genders.setListener(object : QuestionListener<String>() {
-            override fun onSelected(value: String) {
-                onPageComplete()
-            }
-        })
-        if (!isBuildingData()) {
-            genders.setValue(userData!!.gender)
-        }
-        fragments.add(genders)
-    }
-
-    private fun initTerms(fragments: MutableList<Fragment>) {
-        terms = QuestionCheckboxFragment()
-        terms.setLayout(QuestionFragment.Layout(R.drawable.art_icon, "Terms and Conditions\nof Science!"))
-        terms.setText(resources.getString(R.string.terms_text))
-        terms.setListener(object : QuestionListener<Boolean>() {
-            override fun onSelected(value: Boolean) {
-                if (value) {
-                    onPageComplete()
-                    terms.checkbox.isChecked = true
-                    terms.checkbox.isEnabled = false
-                    userData!!.acceptedTerms = value
+                LaunchedEffect(Unit) {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            SettingsEvent.RequestHealthConnectPermissions ->
+                                healthConnectPermissionLauncher.launch(HealthConnectManager.PERMISSIONS)
+                            SettingsEvent.RequestNotificationPermission ->
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            SettingsEvent.NavigateToIntroThanks -> {
+                                startActivity(Intent(this@SettingsActivity, IntroThanksActivity::class.java))
+                                finish()
+                                overridePendingTransition(0, 0)
+                            }
+                            SettingsEvent.SavedAndNavigateToMain -> {
+                                Toast.makeText(this@SettingsActivity, "Saved!", Toast.LENGTH_LONG).show()
+                                startActivity(Intent(this@SettingsActivity, MainActivity::class.java))
+                                finish()
+                            }
+                        }
+                    }
                 }
+
+                SettingsScreen(
+                    state = state,
+                    onBack = { finish() },
+                    onSave = viewModel::onSave,
+                    onShowCredits = viewModel::onShowCreditsDialog,
+                    onDismissCredits = viewModel::onDismissCreditsDialog,
+                    onTermsCheckedChange = viewModel::onTermsCheckedChange,
+                    onRequestHealthConnect = viewModel::onRequestHealthConnectPermissions,
+                    onBirthdateSelected = viewModel::onBirthdateSelected,
+                    onRaceSelected = viewModel::onRaceSelected,
+                    onGenderSelected = viewModel::onGenderSelected,
+                    onNotificationContinue = viewModel::onNotificationContinue,
+                    onHappySelected = viewModel::onHappySelected,
+                    onStressSelected = viewModel::onStressSelected,
+                    onActivitySelected = viewModel::onActivitySelected,
+                    onSleepQualitySelected = viewModel::onSleepQualitySelected,
+                    onDotClick = viewModel::goToStep
+                )
             }
-        })
-        if (!isBuildingData()) {
-            terms.setValue(userData!!.acceptedTerms)
         }
-        fragments.add(terms)
-    }
-
-    private fun initNotification(fragments: MutableList<Fragment>) {
-        notification = QuestionNotificationFragment()
-        notification.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_alarm, "Would you like daily notification reminders?"))
-        notification.setListener(object : QuestionListener<QuestionNotificationFragment.NotificationData>() {
-            override fun onSelected(value: QuestionNotificationFragment.NotificationData) {
-                onPageComplete()
-            }
-
-            override fun onDataSave(value: QuestionNotificationFragment.NotificationData) {
-                onPageComplete()
-                waitThenSlidePage()
-            }
-        })
-        notification.setValue(userData!!.notificationData)
-        fragments.add(notification)
-    }
-
-    private fun initBirthdate(fragments: MutableList<Fragment>) {
-        birthdate = QuestionDateFragment()
-        birthdate.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_birthday, "When is your birthdate?"))
-        birthdate.setListener(object : QuestionListener<String>() {
-            override fun onSelected(value: String) {
-                onPageComplete()
-            }
-        })
-        if (!isBuildingData()) {
-            birthdate.setValue(userData!!.dobString)
-        }
-        fragments.add(birthdate)
-    }
-
-    private fun initRace(fragments: MutableList<Fragment>) {
-        race = QuestionSpinnerFragment()
-        race.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_race, "Which of these describes you the best?"))
-        race.init(R.array.racevalues, R.array.races, "Please Select an Option")
-        race.setListener(object : QuestionListener<String>() {
-            override fun onSelected(value: String) {
-                onPageComplete()
-            }
-        })
-        if (!isBuildingData()) {
-            race.setValue(userData!!.race)
-        }
-        fragments.add(race)
-    }
-
-    private fun initHealthConnect(fragments: MutableList<Fragment>) {
-        healthConnect = QuestionHealthConnectFragment()
-        healthConnect.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_activity, "Please share your step and sleep data from Health Connect."))
-        healthConnect.setListener(object : QuestionListener<Boolean>() {
-            override fun onSelected(value: Boolean) {
-                onPageComplete()
-            }
-
-            override fun onDataSave(value: Boolean) {
-                onPageComplete()
-                waitThenSlidePage()
-            }
-        })
-        if (!isBuildingData()) {
-            healthConnect.setValue(userData!!.healthConnectGranted)
-        }
-        fragments.add(healthConnect)
-    }
-
-    private fun initActivity(fragments: MutableList<Fragment>) {
-        activityLevel = QuestionSpinnerFragment()
-        activityLevel.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_activity, "On average, how many hours are you active each day?"))
-        activityLevel.init(R.array.activityvalues, R.array.activity, "Please Select an Option")
-        activityLevel.setListener(object : QuestionListener<String>() {
-            override fun onSelected(value: String) {
-                onPageComplete()
-            }
-        })
-        if (!isBuildingData()) {
-            activityLevel.setValue(userData!!.activity)
-        }
-        fragments.add(activityLevel)
-    }
-
-    private fun initStress(fragments: MutableList<Fragment>) {
-        stress = QuestionRadioGroupFragment()
-        stress.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_stress, "What is your average stress level?"))
-        stress.init("Very Low", "Very High", resources.getColor(R.color.radio_green), resources.getColor(R.color.radio_red), 7)
-        stress.setListener(object : QuestionListener<Int>() {
-            override fun onSelected(value: Int) {
-                onPageComplete()
-            }
-        })
-        if (!isBuildingData()) {
-            stress.setValue(userData!!.stress)
-        }
-        fragments.add(stress)
-    }
-
-    private fun initHappy(fragments: MutableList<Fragment>) {
-        happy = QuestionRadioGroupFragment()
-        happy.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_happiness, "What is your average happiness level?"))
-        happy.init("Very Unhappy", "Very Happy")
-        happy.setListener(object : QuestionListener<Int>() {
-            override fun onSelected(value: Int) {
-                onPageComplete()
-            }
-        })
-        if (!isBuildingData()) {
-            happy.setValue(userData!!.happy)
-        }
-        fragments.add(happy)
-    }
-
-    private fun initSleepQuality(fragments: MutableList<Fragment>) {
-        sleepQuality = QuestionRadioGroupFragment()
-        sleepQuality.setLayout(QuestionFragment.Layout(R.drawable.icon_settings_sleep, "On average, how well do you sleep?"))
-        sleepQuality.init("Terrible", "Great!")
-        sleepQuality.setListener(object : QuestionListener<Int>() {
-            override fun onSelected(value: Int) {
-                onPageComplete()
-            }
-        })
-        if (!isBuildingData()) {
-            sleepQuality.setValue(userData!!.sleepQuality)
-        }
-        fragments.add(sleepQuality)
-    }
-
-    private fun getDataFromQuestions() {
-        val data = userData!!
-        data.acceptedTerms = terms.value
-        data.healthConnectGranted = healthConnect.value
-        data.dobString = birthdate.value
-        data.race = race.value
-        data.gender = genders.value
-        data.happy = happy.value
-        data.stress = stress.value
-        data.activity = activityLevel.value
-        data.sleepQuality = sleepQuality.value
-        data.notificationData = notification.value
-    }
-
-    private fun saveUserData() {
-        val editor = sharedPreferences.edit()
-
-        val data = userData
-        if (data != null) {
-            editor.putString(USERDATAPREF, Gson().toJson(data))
-        } else {
-            editor.remove(USERDATAPREF)
-        }
-        editor.apply()
-    }
-
-    private val DIALOG_TAG = "DialogFragment"
-
-    private fun showCreditsDialog() {
-        val fragment = CreditsFragment()
-        fragment.setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Light_NoTitleBar_Fullscreen)
-        fragment.isCancelable = false
-
-        fragment.show(fragmentManager.beginTransaction(), DIALOG_TAG)
-    }
-
-    class UserData {
-        var acceptedTerms = false
-        var gender: String? = null
-        var race: String? = null
-        var dobString: String? = null
-        var happy = 0
-        var stress = 0
-        var sleepQuality = 0
-        var activity: String? = null
-        var healthConnectGranted: Boolean? = null
-        var timezone: String? = null
-
-        var notificationData: QuestionNotificationFragment.NotificationData? = null
-            get() = field ?: QuestionNotificationFragment.NotificationData()
     }
 
     companion object {
         const val LOGTAG = "SettingsActivity"
-        const val USERDATAPREF = "userdataprefyo"
+    }
+}
 
-        @JvmStatic
-        fun hasSetUserData(sharedPreferences: SharedPreferences): Boolean =
-            sharedPreferences.contains(USERDATAPREF)
+private const val TOTAL_STEPS = 10
+private val STORAGE_DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+private val DISPLAY_DATE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM d\nyyyy")
+private val STORAGE_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+private val DISPLAY_TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a")
 
-        class UserDataLoaded {
-            var userData: UserData = UserData()
-            var existed = true
+@Composable
+private fun SettingsScreen(
+    state: SettingsUiState,
+    onBack: () -> Unit,
+    onSave: () -> Unit,
+    onShowCredits: () -> Unit,
+    onDismissCredits: () -> Unit,
+    onTermsCheckedChange: (Boolean) -> Unit,
+    onRequestHealthConnect: () -> Unit,
+    onBirthdateSelected: (String) -> Unit,
+    onRaceSelected: (String) -> Unit,
+    onGenderSelected: (String) -> Unit,
+    onNotificationContinue: (String, Boolean) -> Unit,
+    onHappySelected: (Int) -> Unit,
+    onStressSelected: (Int) -> Unit,
+    onActivitySelected: (String) -> Unit,
+    onSleepQualitySelected: (Int) -> Unit,
+    onDotClick: (Int) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(FadeBlue)
+    ) {
+        if (state.isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            return@Box
         }
 
-        @JvmStatic
-        fun loadUserData(context: Context): UserDataLoaded {
-            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-            val str = sharedPreferences.getString(USERDATAPREF, "")
-
-            var existed = true
-            var userData: UserData? = try {
-                Gson().fromJson(str, UserData::class.java)
-            } catch (e: Exception) {
-                null
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Only shown when revisiting Settings to edit existing answers -- onboarding hides
+            // this whole row, matching the legacy `R.id.controls` visibility toggle.
+            if (!state.isBuildingData) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onBack) { Text("Back") }
+                    TextButton(onClick = onShowCredits) { Text("Settings") }
+                    TextButton(onClick = onSave) { Text("Save") }
+                }
             }
 
-            if (userData == null) {
-                userData = UserData()
-                existed = false
-            }
+            StepDotsIndicator(
+                currentStep = state.currentStep,
+                revealedSteps = state.revealedSteps,
+                totalSteps = TOTAL_STEPS,
+                onDotClick = onDotClick
+            )
 
-            val loaded = UserDataLoaded()
-            loaded.existed = existed
-            loaded.userData = userData
-            return loaded
+            Box(modifier = Modifier.weight(1f)) {
+                when (SettingsStep.entries[state.currentStep]) {
+                    SettingsStep.TERMS -> TermsStep(
+                        accepted = state.acceptedTerms,
+                        onCheckedChange = onTermsCheckedChange
+                    )
+                    SettingsStep.HEALTH_CONNECT -> HealthConnectStep(
+                        granted = state.healthConnectGranted,
+                        onConnect = onRequestHealthConnect
+                    )
+                    SettingsStep.BIRTHDATE -> BirthdateStep(
+                        dobString = state.dobString,
+                        onSelected = onBirthdateSelected
+                    )
+                    SettingsStep.RACE -> DropdownStep(
+                        icon = R.drawable.icon_settings_race,
+                        question = "Which of these describes you the best?",
+                        prompt = "Please Select an Option",
+                        labels = stringArrayResource(R.array.races),
+                        values = stringArrayResource(R.array.racevalues),
+                        selected = state.race,
+                        onSelect = onRaceSelected
+                    )
+                    SettingsStep.GENDER -> GenderStep(
+                        selected = state.gender,
+                        onSelect = onGenderSelected
+                    )
+                    SettingsStep.NOTIFICATION -> NotificationStep(
+                        time = state.notificationTime,
+                        enabled = state.notificationSet,
+                        onContinue = onNotificationContinue
+                    )
+                    SettingsStep.HAPPY -> RadioScaleStep(
+                        icon = R.drawable.icon_settings_happiness,
+                        question = "What is your average happiness level?",
+                        leftLabel = "Very Unhappy",
+                        rightLabel = "Very Happy",
+                        leftColor = RadioRed,
+                        rightColor = RadioGreen,
+                        selected = state.happy,
+                        onSelect = onHappySelected
+                    )
+                    SettingsStep.STRESS -> RadioScaleStep(
+                        icon = R.drawable.icon_settings_stress,
+                        question = "What is your average stress level?",
+                        leftLabel = "Very Low",
+                        rightLabel = "Very High",
+                        // Inverted vs. happy/sleep-quality: low stress reads as "good" (green).
+                        leftColor = RadioGreen,
+                        rightColor = RadioRed,
+                        selected = state.stress,
+                        onSelect = onStressSelected
+                    )
+                    SettingsStep.ACTIVITY -> DropdownStep(
+                        icon = R.drawable.icon_settings_activity,
+                        question = "On average, how many hours are you active each day?",
+                        prompt = "Please Select an Option",
+                        labels = stringArrayResource(R.array.activity),
+                        values = stringArrayResource(R.array.activityvalues),
+                        selected = state.activityLevel,
+                        onSelect = onActivitySelected
+                    )
+                    SettingsStep.SLEEP_QUALITY -> RadioScaleStep(
+                        icon = R.drawable.icon_settings_sleep,
+                        question = "On average, how well do you sleep?",
+                        leftLabel = "Terrible",
+                        rightLabel = "Great!",
+                        leftColor = RadioRed,
+                        rightColor = RadioGreen,
+                        selected = state.sleepQuality,
+                        onSelect = onSleepQualitySelected
+                    )
+                }
+            }
         }
     }
+
+    if (state.showCreditsDialog) {
+        CreditsDialog(onDismiss = onDismissCredits)
+    }
+}
+
+@Composable
+private fun TermsStep(accepted: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val scrollState = rememberScrollState()
+    var canCheck by remember { mutableStateOf(accepted) }
+
+    LaunchedEffect(scrollState.value, scrollState.maxValue) {
+        // Mirrors `TriggeringScrollView`'s `diff <= 0` trigger: fires once scrolled to the
+        // bottom, or immediately if the text fits without scrolling at all.
+        if (scrollState.value >= scrollState.maxValue) {
+            canCheck = true
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+        Image(
+            painter = painterResource(R.drawable.art_icon),
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = 16.dp)
+        )
+        Text(
+            text = "Terms and Conditions\nof Science!",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { heading() }
+                .padding(bottom = 16.dp)
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(scrollState)
+        ) {
+            Text(text = stringResource(R.string.terms_text), fontSize = 14.sp)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = accepted,
+                onCheckedChange = onCheckedChange,
+                enabled = !accepted && canCheck,
+                modifier = Modifier.semantics {
+                    contentDescription = if (canCheck) {
+                        "I accept the terms and conditions"
+                    } else {
+                        "I accept the terms and conditions. Scroll to the bottom to enable."
+                    }
+                }
+            )
+            Text("I accept the terms and conditions")
+        }
+    }
+}
+
+@Composable
+private fun HealthConnectStep(granted: Boolean?, onConnect: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(R.drawable.icon_settings_activity),
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = 16.dp)
+        )
+        Text(
+            text = "Please share your step and sleep data from Health Connect.",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .semantics { heading() }
+                .padding(bottom = 24.dp)
+        )
+        Button(
+            onClick = onConnect,
+            modifier = Modifier
+                .defaultMinSize(minHeight = 48.dp)
+                .semantics { contentDescription = "Connect to Health Connect" }
+        ) {
+            Text("Connect to Health Connect")
+        }
+        when (granted) {
+            true -> Text(modifier = Modifier.padding(top = 16.dp), text = "Connected")
+            false -> Text(modifier = Modifier.padding(top = 16.dp), text = "Not connected")
+            null -> Unit
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BirthdateStep(dobString: String?, onSelected: (String) -> Unit) {
+    var showPicker by remember { mutableStateOf(false) }
+    val parsedDate = remember(dobString) {
+        dobString?.let { runCatching { LocalDate.parse(it, STORAGE_DATE_FORMAT) }.getOrNull() }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(R.drawable.icon_settings_birthday),
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = 16.dp)
+        )
+        Text(
+            text = "When is your birthdate?",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .semantics { heading() }
+                .padding(bottom = 24.dp)
+        )
+        Button(
+            onClick = { showPicker = true },
+            modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+        ) {
+            Text("Select Date")
+        }
+        parsedDate?.let {
+            Text(
+                text = it.format(DISPLAY_DATE_FORMAT),
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        }
+    }
+
+    if (showPicker) {
+        val initialMillis = parsedDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPicker = false
+                    pickerState.selectedDateMillis?.let { millis ->
+                        val date = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                        onSelected(date.format(STORAGE_DATE_FORMAT))
+                    }
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
+}
+
+@Composable
+private fun GenderStep(selected: String?, onSelect: (String) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(R.drawable.icon_settings_gender),
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = 16.dp)
+        )
+        Text(
+            text = "What's your gender?",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .semantics { heading() }
+                .padding(bottom = 24.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectableGroup(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            GenderIconChoice(
+                label = "Male",
+                icon = R.drawable.question_icon_male,
+                color = colorResource(R.color.gender_male),
+                selected = selected == "m",
+                onClick = { onSelect("m") }
+            )
+            GenderIconChoice(
+                label = "Female",
+                icon = R.drawable.question_icon_female,
+                color = colorResource(R.color.gender_female),
+                selected = selected == "f",
+                onClick = { onSelect("f") }
+            )
+        }
+    }
+}
+
+@Composable
+private fun GenderIconChoice(
+    label: String,
+    icon: Int,
+    color: androidx.compose.ui.graphics.Color,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .padding(12.dp)
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .semantics { contentDescription = label }
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant),
+            modifier = Modifier.size(72.dp)
+        )
+        Text(
+            text = label,
+            color = if (selected) color else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NotificationStep(
+    time: String,
+    enabled: Boolean,
+    onContinue: (String, Boolean) -> Unit
+) {
+    var localTime by remember(time) { mutableStateOf(time) }
+    var localEnabled by remember(enabled) { mutableStateOf(enabled) }
+    var showPicker by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(R.drawable.icon_settings_alarm),
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .padding(bottom = 16.dp)
+        )
+        Text(
+            text = "Would you like daily notification reminders?",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .semantics { heading() }
+                .padding(bottom = 24.dp)
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = localEnabled, onCheckedChange = { localEnabled = it })
+            Text("Enable notifications")
+        }
+        Button(
+            onClick = { showPicker = true },
+            modifier = Modifier
+                .defaultMinSize(minHeight = 48.dp)
+                .padding(top = 12.dp)
+        ) {
+            Text(runCatching { LocalTime.parse(localTime, STORAGE_TIME_FORMAT).format(DISPLAY_TIME_FORMAT) }.getOrDefault(localTime))
+        }
+        Button(
+            onClick = { onContinue(localTime, localEnabled) },
+            modifier = Modifier
+                .defaultMinSize(minHeight = 48.dp)
+                .padding(top = 24.dp)
+        ) {
+            Text("Continue")
+        }
+    }
+
+    if (showPicker) {
+        val parsed = runCatching { LocalTime.parse(localTime, STORAGE_TIME_FORMAT) }.getOrDefault(LocalTime.of(9, 30))
+        val pickerState = rememberTimePickerState(
+            initialHour = parsed.hour,
+            initialMinute = parsed.minute,
+            is24Hour = false
+        )
+        Dialog(onDismissRequest = { showPicker = false }) {
+            Surface(shape = RoundedCornerShape(16.dp)) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    TimePicker(state = pickerState)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+                        TextButton(onClick = {
+                            showPicker = false
+                            localTime = LocalTime.of(pickerState.hour, pickerState.minute).format(STORAGE_TIME_FORMAT)
+                        }) { Text("OK") }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreditsDialog(onDismiss: () -> Unit) {
+    val credits = stringArrayResource(R.array.iconcredits)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        title = { Text("Credits") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                credits.forEach { credit -> Text(credit) }
+            }
+        }
+    )
 }

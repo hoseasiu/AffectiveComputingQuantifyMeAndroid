@@ -149,18 +149,20 @@ clean run through it.
 
 Migration is **partial**; check `IMPROVEMENTS.md` §3 for current status before assuming a screen is
 Compose. As of the last update: `HistoryActivity`, `ExperimentChooseActivity`,
-`ExperimentInstructionsActivity`, `ExperimentProgressActivity`, and the daily check-in
-(`ExperimentCheckinActivity`) are Jetpack Compose (Material 3) with a `@HiltViewModel` +
-`StateFlow<UiState>` + one-shot `Channel` event pattern (`viewmodel/` package — copy this
-convention for new ViewModels). **Still the legacy Java `QuestionActivity` + `ViewPager` +
-`ScrollPageIndicator` wizard framework**: `IntroActivity`, `SettingsActivity` (onboarding),
-`ExperimentConfigActivity` (Kotlin, but still rides the Java framework), and the whole
-`activities/questions/` + `view/` custom-widget zoo (`SelectableIcon*`, `ColoredRadioGroup`,
-`TimePickerView`, `FontTextView`, etc.). `QuestionListener<T>` communicates answers back up
-(`onSelected`/`onDataSave`/`onResetQuestion`); note `QuestionFragment.listener` is declared as the
-**raw type** `QuestionListener` (no generic), so a mismatched `QuestionListener<T>` on a fragment
-typed for a different `T` will compile silently and only fail at runtime — check this carefully
-when wiring a new fragment/listener pair.
+`ExperimentInstructionsActivity`, `ExperimentProgressActivity`, the daily check-in
+(`ExperimentCheckinActivity`), and (since #22) the onboarding wizard (`IntroActivity`,
+`IntroThanksActivity`, `SettingsActivity`, `ExperimentConfigActivity`) are all Jetpack Compose
+(Material 3) with a `@HiltViewModel` + `StateFlow<UiState>` + one-shot `Channel` event pattern
+(`viewmodel/` package — copy this convention for new ViewModels). The legacy Java
+`QuestionActivity` + `ViewPager` + `ScrollPageIndicator` wizard framework, the whole
+`activities/questions/` fragment package, and all of the `view/` custom-widget zoo except
+`FontTextView` (`SelectableIcon*`, `ColoredRadioGroup`, `TimePickerView`, `ScrollPageIndicator`,
+etc.) are deleted. `FontTextView` survives because `ExperimentCompleteActivity`/
+`ExperimentCreatedActivity` still use it — those two are still legacy XML/View screens (#19's
+scope, not #22's). Shared wizard building blocks (dots indicator, colored radio scale,
+no-default-selection dropdown) live in `ui/wizard/WizardComponents.kt`, reusing the same
+visual/logic port `ExperimentCheckinActivity` established first; onboarding/settings
+persistence (`UserData`, `NotificationData`) lives in `data/UserData.kt`.
 
 ### Notifications
 

@@ -7,8 +7,9 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.testing.WorkManagerTestInitHelper
 import com.google.gson.Gson
-import edu.mit.media.mysnapshot.activities.SettingsActivity
-import edu.mit.media.mysnapshot.activities.questions.fragment.QuestionNotificationFragment
+import edu.mit.media.mysnapshot.data.NotificationData
+import edu.mit.media.mysnapshot.data.USERDATAPREF
+import edu.mit.media.mysnapshot.data.UserData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -44,8 +45,8 @@ class AdherenceNudgeSchedulerTest {
     }
 
     private fun saveUserData(notificationSet: Boolean, notificationTime: String?) {
-        val userData = SettingsActivity.UserData()
-        val notificationData = QuestionNotificationFragment.NotificationData()
+        val userData = UserData()
+        val notificationData = NotificationData()
         notificationData.notificationSet = notificationSet
         if (notificationTime != null) {
             notificationData.notificationTime = notificationTime
@@ -53,7 +54,7 @@ class AdherenceNudgeSchedulerTest {
         userData.notificationData = notificationData
 
         PreferenceManager.getDefaultSharedPreferences(context).edit()
-            .putString(SettingsActivity.USERDATAPREF, Gson().toJson(userData))
+            .putString(USERDATAPREF, Gson().toJson(userData))
             .commit()
     }
 

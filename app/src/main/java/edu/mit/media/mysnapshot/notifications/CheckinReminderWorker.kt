@@ -16,7 +16,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import edu.mit.media.mysnapshot.R
 import edu.mit.media.mysnapshot.activities.MainActivity
-import edu.mit.media.mysnapshot.activities.SettingsActivity
+import edu.mit.media.mysnapshot.data.loadUserData
 
 /**
  * Fires the daily check-in reminder notification. Replaces the old AlarmReceiver
@@ -30,7 +30,7 @@ class CheckinReminderWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val userData = SettingsActivity.loadUserData(applicationContext).userData
+        val userData = loadUserData(applicationContext).userData
         if (!userData.notificationData!!.notificationSet) {
             // Preference changed to "off" since this periodic work was enqueued (e.g. the
             // work fired before a cancelUniqueWork request from a later Settings save could
