@@ -5,22 +5,20 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.preference.PreferenceManager
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
-import edu.mit.media.mysnapshot.data.ExperimentRepository
 import edu.mit.media.mysnapshot.notifications.AdherenceNudgeWorker
 import edu.mit.media.mysnapshot.notifications.CheckinReminderWorker
-import kotlinx.coroutines.flow.first
+import edu.mit.media.mysnapshot.viewmodel.MainEvent
+import edu.mit.media.mysnapshot.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
-import org.joda.time.LocalDate
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
-    @Inject
-    lateinit var repository: ExperimentRepository
+    private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,33 +30,29 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            val experiment = repository.getLatestExperiment().first()
-
-            if (experiment == null || experiment.isCancelled) {
-                startActivity(Intent(this@MainActivity, ExperimentChooseActivity::class.java))
-                finish()
-                return@launch
+            viewModel.events.collect { event ->
+                when (event) {
+                    MainEvent.NavigateToChoose -> {
+                        startActivity(Intent(this@MainActivity, ExperimentChooseActivity::class.java))
+                        finish()
+                    }
+                    is MainEvent.NavigateToComplete -> {
+                        ExperimentCompleteActivity.startActivity(this@MainActivity, event.experimentId)
+                        finish()
+                    }
+                    is MainEvent.NavigateToCheckin -> {
+                        ExperimentCheckinActivity.startActivity(this@MainActivity, event.experimentId)
+                        finish()
+                    }
+                    is MainEvent.NavigateToInstructions -> {
+                        ExperimentInstructionsActivity.startActivity(this@MainActivity, event.experimentId)
+                        finish()
+                    }
+                }
             }
-
-            if (!experiment.isActive) {
-                ExperimentCompleteActivity.startActivity(this@MainActivity, experiment.id)
-                finish()
-                return@launch
-            }
-
-            val checkins = repository.getCheckinsForExperiment(experiment.id).first()
-            val today = LocalDate.now()
-            val startedToday = LocalDate(experiment.startTime) == today
-            val checkedInToday = checkins.any { LocalDate(it.checkinDate) == today }
-            val hadCheckinToday = startedToday || checkedInToday
-
-            if (FORCE_CHECKIN || !hadCheckinToday) {
-                ExperimentCheckinActivity.startActivity(this@MainActivity, experiment.id)
-            } else {
-                ExperimentInstructionsActivity.startActivity(this@MainActivity, experiment.id)
-            }
-            finish()
         }
+
+        viewModel.route(FORCE_CHECKIN)
     }
 
     override fun onNewIntent(intent: Intent) {

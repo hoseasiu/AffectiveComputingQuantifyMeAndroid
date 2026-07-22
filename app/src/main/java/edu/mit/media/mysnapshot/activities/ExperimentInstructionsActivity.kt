@@ -3,9 +3,9 @@ package edu.mit.media.mysnapshot.activities
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.preference.PreferenceManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -36,10 +36,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -53,11 +49,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.R
 import edu.mit.media.mysnapshot.data.ExperimentRepository
-import edu.mit.media.mysnapshot.database.ExperimentEntity
 import org.joda.time.format.DateTimeFormat
 import edu.mit.media.mysnapshot.engine.CheckinOutcome
 import edu.mit.media.mysnapshot.engine.ExperimentEngine
@@ -71,189 +66,97 @@ import edu.mit.media.mysnapshot.ui.theme.QuantifyMeFonts
 import edu.mit.media.mysnapshot.ui.theme.QuantifyMeTheme
 import edu.mit.media.mysnapshot.ui.theme.Yellow
 import edu.mit.media.mysnapshot.ui.theme.rememberQuantifyMeFonts
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import javax.inject.Inject
+import edu.mit.media.mysnapshot.viewmodel.InstructionsEvent
+import edu.mit.media.mysnapshot.viewmodel.InstructionsUiState
+import edu.mit.media.mysnapshot.viewmodel.ExperimentInstructionsViewModel
 
+/**
+ * Daily instructions screen (AGENT_PLANS/IMPROVEMENTS.md 2.2). Now Compose +
+ * [ExperimentInstructionsViewModel] instead of driving Room reads and dialog visibility
+ * straight from Activity-scoped Compose state -- see the ViewModel's doc comments for why the
+ * per-resume refresh and one-shot "dialogs shown" guard are shaped the way they are.
+ */
 @AndroidEntryPoint
 class ExperimentInstructionsActivity : ComponentActivity() {
 
-    @Inject
-    lateinit var repository: ExperimentRepository
-
-    private var resumeTrigger by mutableIntStateOf(0)
-    private var dialogsShown = false
+    private val viewModel: ExperimentInstructionsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val launchIntent = intent
+        val experimentId = launchIntent.getIntExtra(EXPERIMENT_ID_EXTRA, -1)
+        val pendingOutcome = if (launchIntent.getBooleanExtra(HAS_OUTCOME_EXTRA, false)) {
+            outcomeFromIntent(launchIntent)
+        } else {
+            null
+        }
+        viewModel.load(experimentId, pendingOutcome, MainActivity.FORCE_NEW_STAGE_DIALOG)
+
         setContent {
             QuantifyMeTheme {
                 val fonts = rememberQuantifyMeFonts()
-                var uiState by remember { mutableStateOf<InstructionsUiState>(InstructionsUiState.Loading) }
-                var isRefreshing by remember { mutableStateOf(false) }
-                var newStageDialogVisible by remember { mutableStateOf(false) }
-                var failedStageDialogVisible by remember { mutableStateOf(false) }
-                var failedStageReason by remember { mutableStateOf<ExperimentEngine.RestartReason?>(null) }
-                var progressOptInDialogVisible by remember { mutableStateOf(false) }
-                var targetPreviewOptInDialogVisible by remember { mutableStateOf(false) }
-                var targetPreviewDialogVisible by remember { mutableStateOf(false) }
-                var upcomingTargets by remember { mutableStateOf<List<ExperimentRepository.UpcomingTarget>>(emptyList()) }
+                val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-                LaunchedEffect(resumeTrigger) {
-                    val launchIntent = intent
-                    val experimentId = launchIntent.getIntExtra(EXPERIMENT_ID_EXTRA, -1)
-                    val pendingOutcome = if (launchIntent.getBooleanExtra(HAS_OUTCOME_EXTRA, false)) {
-                        outcomeFromIntent(launchIntent)
-                    } else {
-                        null
-                    }
-
-                    val current = if (experimentId != -1) {
-                        repository.getExperimentById(experimentId).first()
-                    } else {
-                        repository.getLatestExperiment().first()
-                    }
-
-                    if (current == null) {
-                        startActivity(Intent(this@ExperimentInstructionsActivity, MainActivity::class.java))
-                        finish()
-                        overridePendingTransition(0, 0)
-                        return@LaunchedEffect
-                    }
-
-                    if (!current.isActive) {
-                        ExperimentCompleteActivity.startActivity(this@ExperimentInstructionsActivity, current.id)
-                        finish()
-                        overridePendingTransition(0, 0)
-                        return@LaunchedEffect
-                    }
-
-                    val checkins = repository.getCheckinsForExperiment(current.id).first()
-                    if (checkins.isEmpty()) {
-                        uiState = InstructionsUiState.FirstDay
-                        return@LaunchedEffect
-                    }
-
-                    val outcome = pendingOutcome ?: repository.refreshInstructions(current.id)
-
-                    if (!dialogsShown) {
-                        dialogsShown = true
-                        if (outcome.restartedStage) {
-                            failedStageReason = outcome.restartReason
-                            failedStageDialogVisible = true
-                        } else if (outcome.newStage || MainActivity.FORCE_NEW_STAGE_DIALOG) {
-                            newStageDialogVisible = true
+                LaunchedEffect(Unit) {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            InstructionsEvent.NavigateToMain -> {
+                                startActivity(Intent(this@ExperimentInstructionsActivity, MainActivity::class.java))
+                                finish()
+                                overridePendingTransition(0, 0)
+                            }
+                            is InstructionsEvent.NavigateToComplete -> {
+                                ExperimentCompleteActivity.startActivity(this@ExperimentInstructionsActivity, event.experimentId)
+                                finish()
+                                overridePendingTransition(0, 0)
+                            }
+                            is InstructionsEvent.NavigateToProgress -> {
+                                ExperimentProgressActivity.startActivity(this@ExperimentInstructionsActivity, event.experimentId)
+                            }
                         }
                     }
-
-                    uiState = InstructionsUiState.Instructions(
-                        experiment = current,
-                        experimentType = ExperimentType.fromTypeKey(current.type),
-                        outcome = outcome
-                    )
                 }
 
                 InstructionsScreen(
-                    uiState = uiState,
-                    isRefreshing = isRefreshing,
+                    state = state,
                     fonts = fonts,
                     onSettingsClick = { startActivity(Intent(this@ExperimentInstructionsActivity, SettingsActivity::class.java)) },
                     onHistoryClick = { startActivity(Intent(this@ExperimentInstructionsActivity, HistoryActivity::class.java)) },
-                    onRefreshClick = {
-                        val experiment = (uiState as? InstructionsUiState.Instructions)?.experiment
-                        if (experiment != null && !isRefreshing) {
-                            isRefreshing = true
-                            lifecycleScope.launch {
-                                val outcome = repository.refreshInstructions(experiment.id)
-                                uiState = InstructionsUiState.Instructions(
-                                    experiment = experiment,
-                                    experimentType = ExperimentType.fromTypeKey(experiment.type),
-                                    outcome = outcome
-                                )
-                                isRefreshing = false
-                            }
-                        }
-                    },
-                    onProgressClick = {
-                        val experiment = (uiState as? InstructionsUiState.Instructions)?.experiment
-                        if (experiment != null) {
-                            val prefs = PreferenceManager.getDefaultSharedPreferences(this@ExperimentInstructionsActivity)
-                            if (prefs.getBoolean(SHOW_PROGRESS_PREF, false)) {
-                                ExperimentProgressActivity.startActivity(this@ExperimentInstructionsActivity, experiment.id)
-                            } else {
-                                progressOptInDialogVisible = true
-                            }
-                        }
-                    },
-                    onPreviewTargetsClick = {
-                        val experiment = (uiState as? InstructionsUiState.Instructions)?.experiment
-                        if (experiment != null) {
-                            val prefs = PreferenceManager.getDefaultSharedPreferences(this@ExperimentInstructionsActivity)
-                            if (prefs.getBoolean(SHOW_TARGET_PREVIEW_PREF, false)) {
-                                lifecycleScope.launch {
-                                    upcomingTargets = repository.getUpcomingTargetPreview(experiment.id)
-                                    targetPreviewDialogVisible = true
-                                }
-                            } else {
-                                targetPreviewOptInDialogVisible = true
-                            }
-                        }
-                    }
+                    onRefreshClick = viewModel::onRefreshClick,
+                    onProgressClick = viewModel::onProgressClick,
+                    onPreviewTargetsClick = viewModel::onPreviewTargetsClick
                 )
 
-                if (newStageDialogVisible) {
-                    NewStageDialog(fonts = fonts, onDismiss = { newStageDialogVisible = false })
+                if (state.newStageDialogVisible) {
+                    NewStageDialog(fonts = fonts, onDismiss = viewModel::onNewStageDialogDismissed)
                 }
-                if (failedStageDialogVisible) {
+                if (state.failedStageDialogVisible) {
                     FailedStageDialog(
-                        reason = failedStageReason,
+                        reason = state.failedStageReason,
                         fonts = fonts,
-                        onDismiss = { failedStageDialogVisible = false }
+                        onDismiss = viewModel::onFailedStageDialogDismissed
                     )
                 }
-                if (progressOptInDialogVisible) {
+                if (state.progressOptInDialogVisible) {
                     ProgressOptInDialog(
-                        onDismiss = { progressOptInDialogVisible = false },
-                        onConfirm = {
-                            progressOptInDialogVisible = false
-                            val experiment = (uiState as? InstructionsUiState.Instructions)?.experiment
-                            if (experiment != null) {
-                                PreferenceManager.getDefaultSharedPreferences(this@ExperimentInstructionsActivity)
-                                    .edit()
-                                    .putBoolean(SHOW_PROGRESS_PREF, true)
-                                    .apply()
-                                ExperimentProgressActivity.startActivity(this@ExperimentInstructionsActivity, experiment.id)
-                            }
-                        }
+                        onDismiss = viewModel::onProgressOptInDismissed,
+                        onConfirm = viewModel::onProgressOptInConfirmed
                     )
                 }
-                if (targetPreviewOptInDialogVisible) {
+                if (state.targetPreviewOptInDialogVisible) {
                     TargetPreviewOptInDialog(
-                        onDismiss = { targetPreviewOptInDialogVisible = false },
-                        onConfirm = {
-                            targetPreviewOptInDialogVisible = false
-                            val experiment = (uiState as? InstructionsUiState.Instructions)?.experiment
-                            if (experiment != null) {
-                                PreferenceManager.getDefaultSharedPreferences(this@ExperimentInstructionsActivity)
-                                    .edit()
-                                    .putBoolean(SHOW_TARGET_PREVIEW_PREF, true)
-                                    .apply()
-                                lifecycleScope.launch {
-                                    upcomingTargets = repository.getUpcomingTargetPreview(experiment.id)
-                                    targetPreviewDialogVisible = true
-                                }
-                            }
-                        }
+                        onDismiss = viewModel::onTargetPreviewOptInDismissed,
+                        onConfirm = viewModel::onTargetPreviewOptInConfirmed
                     )
                 }
-                if (targetPreviewDialogVisible) {
-                    val experimentType = (uiState as? InstructionsUiState.Instructions)?.experimentType
+                if (state.targetPreviewDialogVisible) {
+                    val experimentType = state.experimentType
                     if (experimentType != null) {
                         TargetPreviewDialog(
                             experimentType = experimentType,
-                            upcomingTargets = upcomingTargets,
-                            onDismiss = { targetPreviewDialogVisible = false }
+                            upcomingTargets = state.upcomingTargets,
+                            onDismiss = viewModel::onTargetPreviewDismissed
                         )
                     }
                 }
@@ -263,14 +166,12 @@ class ExperimentInstructionsActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        resumeTrigger++
+        viewModel.onResume()
     }
 
     companion object {
         const val LOGTAG = "ExperimentInstructionsActivity"
         const val EXPERIMENT_ID_EXTRA = "experiment_id"
-        private const val SHOW_PROGRESS_PREF = "show_progress_during_experiment"
-        private const val SHOW_TARGET_PREVIEW_PREF = "show_target_preview_during_experiment"
         private const val HAS_OUTCOME_EXTRA = "has_outcome"
         private const val NEW_STAGE_EXTRA = "new_stage"
         private const val RESTARTED_STAGE_EXTRA = "restarted_stage"
@@ -323,20 +224,9 @@ class ExperimentInstructionsActivity : ComponentActivity() {
     }
 }
 
-private sealed interface InstructionsUiState {
-    data object Loading : InstructionsUiState
-    data object FirstDay : InstructionsUiState
-    data class Instructions(
-        val experiment: ExperimentEntity,
-        val experimentType: ExperimentType,
-        val outcome: CheckinOutcome
-    ) : InstructionsUiState
-}
-
 @Composable
 private fun InstructionsScreen(
-    uiState: InstructionsUiState,
-    isRefreshing: Boolean,
+    state: InstructionsUiState,
     fonts: QuantifyMeFonts,
     onSettingsClick: () -> Unit,
     onHistoryClick: () -> Unit,
@@ -344,25 +234,31 @@ private fun InstructionsScreen(
     onProgressClick: () -> Unit,
     onPreviewTargetsClick: () -> Unit
 ) {
-    when (uiState) {
-        InstructionsUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    when {
+        state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
-        InstructionsUiState.FirstDay -> FirstDayScreen(
+        state.isFirstDay -> FirstDayScreen(
             onSettingsClick = onSettingsClick,
             onHistoryClick = onHistoryClick
         )
-        is InstructionsUiState.Instructions -> InstructionsContent(
-            experimentType = uiState.experimentType,
-            outcome = uiState.outcome,
-            fonts = fonts,
-            isRefreshing = isRefreshing,
-            onSettingsClick = onSettingsClick,
-            onHistoryClick = onHistoryClick,
-            onRefreshClick = onRefreshClick,
-            onProgressClick = onProgressClick,
-            onPreviewTargetsClick = onPreviewTargetsClick
-        )
+        else -> {
+            val experimentType = state.experimentType
+            val outcome = state.outcome
+            if (experimentType != null && outcome != null) {
+                InstructionsContent(
+                    experimentType = experimentType,
+                    outcome = outcome,
+                    fonts = fonts,
+                    isRefreshing = state.isRefreshing,
+                    onSettingsClick = onSettingsClick,
+                    onHistoryClick = onHistoryClick,
+                    onRefreshClick = onRefreshClick,
+                    onProgressClick = onProgressClick,
+                    onPreviewTargetsClick = onPreviewTargetsClick
+                )
+            }
+        }
     }
 }
 
