@@ -1,5 +1,6 @@
 package edu.mit.media.mysnapshot.data
 
+import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import edu.mit.media.mysnapshot.database.CheckinEntity
@@ -8,6 +9,7 @@ import edu.mit.media.mysnapshot.engine.ExperimentEngine
 import edu.mit.media.mysnapshot.engine.ExperimentType
 import edu.mit.media.mysnapshot.engine.ExperimentTypeRegistry
 import edu.mit.media.mysnapshot.engine.readBundledExperimentTypesJson
+import edu.mit.media.mysnapshot.health.FakeHealthConnectGateway
 import edu.mit.media.mysnapshot.health.HealthConnectManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -22,6 +24,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.ZoneOffset
 
 /**
  * Happy-path orchestration coverage for [ExperimentRepository] -- the on-device
@@ -30,35 +33,20 @@ import org.robolectric.annotation.Config
  * AGENT_PLANS/IMPROVEMENTS.md item 5, this is called out as "the riskiest glue in the whole
  * port" with zero prior tests.
  *
- * IMPORTANT / merge-risk note: this file is intentionally scoped to
- * [ExperimentType.fromTypeKey("leisurehappiness")] only, whose `getInputs`/`getOutputs` are 100%
- * checkin-backed (see `ExperimentDataProvider.kt`) and never call [HealthConnectManager].
- * That sidesteps two problems at once:
- *   1. `HealthConnectManager` is a concrete (non-open) Hilt-injected class wrapping a real
- *      Health Connect client with no seam for a hand-written fake without an invasive
- *      production refactor (extracting an interface) that's out of scope here. Under
- *      Robolectric, `HealthConnectClient.getSdkStatus()` reports unavailable, so a real
- *      `HealthConnectManager(context)` harmlessly returns "no signal" for every call --
- *      which is *why* it's safe to construct one below, but it means the three
- *      Health-Connect-backed experiment types (SleepVariabilityStress,
- *      SleepDurationProductivity, StepsSleepEfficiency) are NOT exercised by these tests.
- *   2. `ExperimentRepository.kt` and the `engine` package are both being concurrently modified by
- *      other agents (data export work and an experiment-type-to-JSON generalization,
- *      respectively -- see AGENT_PLANS notes at the time this file was written). These
- *      tests assert against the *current* stage-machine behavior by cross-checking against
- *      the same pure `ExperimentEngine`/`ExperimentStageState` functions the repository
- *      itself calls (rather than hardcoding independently-derived magic numbers), but they
- *      still call the repository's concrete methods and decode its concrete JSON columns,
- *      so **re-verify this file after those merges land** -- it is the most likely test
- *      file in this pass to need updating, not because the coverage is wrong today, but
- *      because its scaffolding (backdating stage dates via `ExperimentStageState`) is
- *      coupled to the exact current shape of that class.
+ * Most of this file is scoped to [ExperimentType.fromTypeKey("leisurehappiness")], whose
+ * `getInputs`/`getOutputs` are 100% checkin-backed (see `ExperimentDataProvider.kt`) and never
+ * call [HealthConnectManager] -- letting most tests stay agnostic to Health Connect entirely.
+ * The three Health-Connect-backed types (`sleepvariabilitystress`, `sleepdurationproductivity`,
+ * `stepssleepefficiency`) are separately covered further down, against
+ * [HealthConnectManager.testGatewayOverride] set to a [FakeHealthConnectGateway] -- see
+ * [issue #21](https://github.com/hoseasiu/AffectiveComputingQuantifyMeAndroid/issues/21).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class)
 class ExperimentRepositoryTest {
 
     private lateinit var db: QuantifyMeDatabase
+    private lateinit var healthConnect: HealthConnectManager
     private lateinit var repository: ExperimentRepository
 
     @Before
@@ -72,7 +60,7 @@ class ExperimentRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(context, QuantifyMeDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        val healthConnect = HealthConnectManager(context)
+        healthConnect = HealthConnectManager(context)
         repository = ExperimentRepository(context, db, healthConnect)
     }
 
@@ -330,5 +318,145 @@ class ExperimentRepositoryTest {
             threw = true
         }
         assertTrue(threw)
+    }
+
+    // ---- Health-Connect-backed experiment types ------------------------------------
+
+    /** A sleep session ending at 7am on [date], for [durationMinutes] with [awakeMinutes] of it spent awake. */
+    private fun sleepSessionEndingOn(date: LocalDate, durationMinutes: Long, awakeMinutes: Long = 0): SleepSessionRecord {
+        val end = date.toDateTimeAtStartOfDay().plusHours(7).toDate().toInstant()
+        val start = end.minusSeconds(durationMinutes * 60)
+        val stages = if (awakeMinutes > 0) {
+            listOf(SleepSessionRecord.Stage(start, start.plusSeconds(awakeMinutes * 60), SleepSessionRecord.STAGE_TYPE_AWAKE))
+        } else {
+            emptyList()
+        }
+        return SleepSessionRecord(
+            startTime = start, startZoneOffset = ZoneOffset.UTC,
+            endTime = end, endZoneOffset = ZoneOffset.UTC,
+            stages = stages
+        )
+    }
+
+    @Test
+    fun submitCheckin_baselineComplete_sleepDurationProductivity_usesHealthConnectSleepDurationAsInput() = runBlocking {
+        val today = LocalDate.now()
+        val type = ExperimentType.fromTypeKey("sleepdurationproductivity")
+        val id = repository.createExperiment(type, 3, 3, 3).toInt()
+
+        val original = readState(id)
+        val backdated = original.withStageDates(0, today.minusDays(7), today)
+        val (datesJson, targetsJson, restartJson) = backdated.toJson()
+        val entity = db.experimentDao().getById(id).first()!!
+        db.experimentDao().update(
+            entity.copy(stageDatesJson = datesJson, stageTargetValuesJson = targetsJson, stageRestartCountJson = restartJson)
+        )
+
+        // Input (sleep duration) comes from Health Connect, aligned to its own calendar day --
+        // no day-shift needed, unlike checkins. One session ending on each of the 7 days in
+        // the baseline window [today-7, today).
+        val sleepDays = (0 until 7).map { today.minusDays(7 - it) }
+        healthConnect.testGatewayOverride = FakeHealthConnectGateway(
+            sessions = sleepDays.map { sleepSessionEndingOn(it, durationMinutes = 450) }
+        )
+
+        // Output (productivity) is still checkin-backed, so it keeps the +1-day-shift quirk:
+        // a checkin recorded on day X represents day X-1's output (see getCheckinsValue).
+        for (offset in 6 downTo 1) {
+            db.checkinDao().insert(checkinAt(id, today.minusDays(offset)))
+        }
+
+        val outcome = repository.submitCheckin(
+            id, didFollowInstructions = 1, happiness = 5, stress = 2, productivity = 4, leisureTime = 60
+        )
+
+        val expectedTargets = ExperimentEngine.setStageTargets(
+            List(7) { 450f }, useVariability = false, type.ranges, type.rangeSize
+        )
+
+        assertTrue("a full 7-day baseline fed by Health Connect sleep duration must end the stage", outcome.newStage)
+        assertEquals(1, outcome.currentStage)
+        assertEquals(expectedTargets.stageTargetValues[1], outcome.target)
+
+        val updatedState = readState(id)
+        assertEquals(expectedTargets.stageTargetValues, updatedState.stageTargetValues)
+    }
+
+    @Test
+    fun submitCheckin_baselineComplete_stepsSleepEfficiency_usesHealthConnectForBothInputAndOutput() = runBlocking {
+        val today = LocalDate.now()
+        val type = ExperimentType.fromTypeKey("stepssleepefficiency")
+        val id = repository.createExperiment(type, 3, 3, 3).toInt()
+
+        val original = readState(id)
+        val backdated = original.withStageDates(0, today.minusDays(7), today)
+        val (datesJson, targetsJson, restartJson) = backdated.toJson()
+        val entity = db.experimentDao().getById(id).first()!!
+        db.experimentDao().update(
+            entity.copy(stageDatesJson = datesJson, stageTargetValuesJson = targetsJson, stageRestartCountJson = restartJson)
+        )
+
+        // Both input (steps) and output (sleep efficiency) are Health Connect-backed here --
+        // neither needs a checkin at all to feed the stage machine.
+        val sleepDays = (0 until 7).map { today.minusDays(7 - it) }
+        healthConnect.testGatewayOverride = FakeHealthConnectGateway(
+            stepsFn = { _, _ -> 8000f },
+            sessions = sleepDays.map { sleepSessionEndingOn(it, durationMinutes = 480, awakeMinutes = 24) }
+        )
+
+        // submitCheckin() still records a checkin row (didFollowInstructions/happiness/etc.
+        // are always collected), but this type's engine signals never read it.
+        val outcome = repository.submitCheckin(
+            id, didFollowInstructions = 1, happiness = 5, stress = 2, productivity = 4, leisureTime = 60
+        )
+
+        val expectedTargets = ExperimentEngine.setStageTargets(
+            List(7) { 8000f }, useVariability = false, type.ranges, type.rangeSize
+        )
+
+        assertTrue("a full 7-day baseline fed entirely by Health Connect must end the stage", outcome.newStage)
+        assertEquals(1, outcome.currentStage)
+        assertEquals(expectedTargets.stageTargetValues[1], outcome.target)
+    }
+
+    @Test
+    fun submitCheckin_sleepVariabilityStress_midBaseline_readsHealthConnectSleepStartWithoutEndingStage() = runBlocking {
+        val today = LocalDate.now()
+        val type = ExperimentType.fromTypeKey("sleepvariabilitystress")
+        val id = repository.createExperiment(type, 3, 3, 3).toInt()
+
+        // Backdate stage 0 to a 3-day-old window so getInputs has a non-empty range to query
+        // Health Connect against -- a fresh, non-backdated day 0 has a zero-width [today,
+        // today) window and would never call through to Health Connect at all.
+        val original = readState(id)
+        val backdated = original.withStageDates(0, today.minusDays(3), today.plusDays(4))
+        val (datesJson, targetsJson, restartJson) = backdated.toJson()
+        val entity = db.experimentDao().getById(id).first()!!
+        db.experimentDao().update(
+            entity.copy(stageDatesJson = datesJson, stageTargetValuesJson = targetsJson, stageRestartCountJson = restartJson)
+        )
+
+        // useVariability=true's max-minus-min target algorithm is covered at the pure-engine
+        // level (ExperimentEngineTest); this only proves the HEALTH_CONNECT_SLEEP_START_MINUTE
+        // signal actually threads through the repository for this type without crashing.
+        val gateway = FakeHealthConnectGateway(
+            sessions = listOf(
+                sleepSessionEndingOn(today.minusDays(3), durationMinutes = 420),
+                sleepSessionEndingOn(today.minusDays(2), durationMinutes = 420),
+                sleepSessionEndingOn(today.minusDays(1), durationMinutes = 420)
+            )
+        )
+        healthConnect.testGatewayOverride = gateway
+
+        db.checkinDao().insert(checkinAt(id, today.minusDays(2)))
+        db.checkinDao().insert(checkinAt(id, today.minusDays(1)))
+
+        val outcome = repository.submitCheckin(
+            id, didFollowInstructions = 1, happiness = 5, stress = 4, productivity = 4, leisureTime = 60
+        )
+
+        assertTrue("stage 0 with only 3 elapsed days must not end yet", !outcome.newStage)
+        assertEquals(0, outcome.currentStage)
+        assertTrue("sleep session data must have been queried from Health Connect", gateway.sleepSessionsQueries.isNotEmpty())
     }
 }

@@ -41,3 +41,9 @@ jobs:
 
       - name: Assemble release
         run: ./gradlew assembleRelease --console=plain
+
+      # Compiles the androidTest source set (issue #21) so it can't silently bit-rot -- actually
+      # *running* these instrumentation/Compose UI tests needs a device/emulator, which this
+      # runner doesn't have; that's a separate follow-up (e.g. reactivecircus/android-emulator-runner).
+      - name: Compile instrumentation tests
+        run: ./gradlew assembleDebugAndroidTest --console=plain
