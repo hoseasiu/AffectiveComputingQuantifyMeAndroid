@@ -29,6 +29,7 @@ on what — it is derived live, never stored here.
 | 2.3 | Main-thread-blocking Room / Health Connect reads moved off the UI thread | `5cd4949` |
 | 2.4 | `Converters` round-trips `DateTime` zone-faithfully | PR #10 |
 | 3.1 | Daily check-in migrated to Compose + `CheckinViewModel` | `db2784d` |
+| 3.2 | Onboarding wizard migrated to Compose; `activities/questions/` + `view/` zoo (except `FontTextView`, still used by `ExperimentComplete`/`CreatedActivity`) retired | #22 |
 | 3.3 | Dark color scheme + optional Material You dynamic color | `adeaeee` |
 | 4 | ACRA and LeakCanary 1.x dropped | `7961888` |
 | 5 | Jawbone UP → Health Connect | PR #4 |
@@ -46,7 +47,6 @@ on what — it is derived live, never stored here.
 | § | Item | Issue |
 |---|---|---|
 | 2.2 | Finish ViewModel migration: `MainActivity`, `ExperimentComplete`, `ExperimentInstructions` | #19 |
-| 3.2 | Migrate onboarding wizard to Compose; retire `activities/questions/` + `view/` | #22 |
 | 4 | Joda→`java.time`, gson, nineoldandroids/Picasso/roundedimageview/legacy-support | #23 |
 | 6.4 | Health Connect Play-readiness: rationale activity, privacy policy, empty states | #18 |
 | 7.1 | Accessibility audit for every screen beyond check-in | #20 |
@@ -75,12 +75,22 @@ repository directly with no ViewModel (#19). New ViewModels must follow the esta
 ## §3 — UI migration (partial by design)
 
 Compose (Material 3): `HistoryActivity`, `ExperimentChooseActivity`,
-`ExperimentInstructionsActivity`, `ExperimentProgressActivity`, `ExperimentCheckinActivity`.
+`ExperimentInstructionsActivity`, `ExperimentProgressActivity`, `ExperimentCheckinActivity`,
+and now (§3.2, #22) `IntroActivity`, `IntroThanksActivity`, `SettingsActivity`,
+`ExperimentConfigActivity`.
 
-**§3.2 still legacy Java:** `IntroActivity`, `SettingsActivity`, `ExperimentConfigActivity`
-ride `QuestionActivity` + `ViewPager` + the 14-class `view/` zoo (#22). Note the landmine
-documented in CLAUDE.md: `QuestionFragment.listener` is a **raw** `QuestionListener`, so a
-mismatched generic compiles silently and fails at runtime.
+**§3.2 landed:** the legacy `QuestionActivity`/`ViewPager` + the `activities/questions/`
+fragment package + the 14-class `view/` zoo are gone, replaced by `SettingsViewModel`/
+`ExperimentConfigViewModel` (the same `@HiltViewModel` + `StateFlow<UiState>` + one-shot
+`Channel` convention as `CheckinViewModel`) and shared Compose wizard pieces in
+`ui/wizard/WizardComponents.kt`. The onboarding/settings persistence model (`UserData`,
+`NotificationData`, `loadUserData`/`saveUserData`) moved to `data/UserData.kt` since it's a
+data concern, not a UI one — same Gson field names, so already-persisted on-device blobs
+still round-trip. `FontTextView` is the one `view/` class kept, since `ExperimentComplete`/
+`ExperimentCreatedActivity` (still legacy XML, #19's scope) still use it. The raw-`QuestionListener`
+landmine CLAUDE.md warned about no longer exists — the new Compose callbacks are plain typed
+lambdas. **Not visually verified on-device** (no emulator in CI, see §10) — only
+`testDebugUnitTest`/`assembleDebug` were run.
 
 ## §4 — Dependencies
 

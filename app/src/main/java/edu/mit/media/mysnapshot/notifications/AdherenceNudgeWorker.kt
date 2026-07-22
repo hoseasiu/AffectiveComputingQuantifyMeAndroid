@@ -16,8 +16,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import edu.mit.media.mysnapshot.R
 import edu.mit.media.mysnapshot.activities.MainActivity
-import edu.mit.media.mysnapshot.activities.SettingsActivity
 import edu.mit.media.mysnapshot.data.ExperimentRepository
+import edu.mit.media.mysnapshot.data.loadUserData
 import edu.mit.media.mysnapshot.engine.ExperimentType
 import kotlinx.coroutines.flow.first
 
@@ -38,7 +38,7 @@ class AdherenceNudgeWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val userData = SettingsActivity.loadUserData(applicationContext).userData
+        val userData = loadUserData(applicationContext).userData
         if (!userData.notificationData!!.notificationSet) {
             return Result.success()
         }
