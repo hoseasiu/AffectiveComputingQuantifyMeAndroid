@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.TextView
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import edu.mit.media.mysnapshot.R
@@ -16,7 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class ExperimentCompleteActivity : PermissionCheckingAppCompatActivity() {
+class ExperimentCompleteActivity : AppCompatActivity() {
 
     private val viewModel: ExperimentCompleteViewModel by viewModels()
 
