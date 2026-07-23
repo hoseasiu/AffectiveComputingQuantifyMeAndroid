@@ -144,7 +144,7 @@ class SettingsActivity : ComponentActivity() {
                     onSave = viewModel::onSave,
                     onShowCredits = viewModel::onShowCreditsDialog,
                     onDismissCredits = viewModel::onDismissCreditsDialog,
-                    onTermsCheckedChange = viewModel::onTermsCheckedChange,
+                    onTermsContinue = viewModel::onTermsContinue,
                     onRequestHealthConnect = viewModel::onRequestHealthConnectPermissions,
                     onBirthdateSelected = viewModel::onBirthdateSelected,
                     onRaceSelected = viewModel::onRaceSelected,
@@ -178,7 +178,7 @@ private fun SettingsScreen(
     onSave: () -> Unit,
     onShowCredits: () -> Unit,
     onDismissCredits: () -> Unit,
-    onTermsCheckedChange: (Boolean) -> Unit,
+    onTermsContinue: () -> Unit,
     onRequestHealthConnect: () -> Unit,
     onBirthdateSelected: (String) -> Unit,
     onRaceSelected: (String) -> Unit,
@@ -228,10 +228,7 @@ private fun SettingsScreen(
 
             Box(modifier = Modifier.weight(1f)) {
                 when (SettingsStep.entries[state.currentStep]) {
-                    SettingsStep.TERMS -> TermsStep(
-                        accepted = state.acceptedTerms,
-                        onCheckedChange = onTermsCheckedChange
-                    )
+                    SettingsStep.TERMS -> TermsStep(onContinue = onTermsContinue)
                     SettingsStep.HEALTH_CONNECT -> HealthConnectStep(
                         granted = state.healthConnectGranted,
                         onConnect = onRequestHealthConnect
@@ -309,18 +306,7 @@ private fun SettingsScreen(
 }
 
 @Composable
-private fun TermsStep(accepted: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    val scrollState = rememberScrollState()
-    var canCheck by rememberSaveable { mutableStateOf(accepted) }
-
-    LaunchedEffect(scrollState.value, scrollState.maxValue) {
-        // Mirrors `TriggeringScrollView`'s `diff <= 0` trigger: fires once scrolled to the
-        // bottom, or immediately if the text fits without scrolling at all.
-        if (scrollState.value >= scrollState.maxValue) {
-            canCheck = true
-        }
-    }
-
+private fun TermsStep(onContinue: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Image(
             painter = painterResource(R.drawable.art_icon),
@@ -330,7 +316,7 @@ private fun TermsStep(accepted: Boolean, onCheckedChange: (Boolean) -> Unit) {
                 .padding(bottom = 16.dp)
         )
         Text(
-            text = "Terms and Conditions\nof Science!",
+            text = "Welcome to Science!",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -342,29 +328,17 @@ private fun TermsStep(accepted: Boolean, onCheckedChange: (Boolean) -> Unit) {
         Column(
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(scrollState)
+                .verticalScroll(rememberScrollState())
         ) {
             Text(text = stringResource(R.string.terms_text), fontSize = 14.sp)
         }
-        Row(
+        Button(
+            onClick = onContinue,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(top = 12.dp)
+                .defaultMinSize(minHeight = 48.dp)
         ) {
-            Checkbox(
-                checked = accepted,
-                onCheckedChange = onCheckedChange,
-                enabled = !accepted && canCheck,
-                modifier = Modifier.semantics {
-                    contentDescription = if (canCheck) {
-                        "I accept the terms and conditions"
-                    } else {
-                        "I accept the terms and conditions. Scroll to the bottom to enable."
-                    }
-                }
-            )
-            Text("I accept the terms and conditions")
+            Text("Continue")
         }
     }
 }

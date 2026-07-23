@@ -1,14 +1,12 @@
 <resources>
     <string name="terms_text">
-<![CDATA[Esta aplicación es parte de un proyecto de investigación realizado por el Affective Computing Group del MIT Media Lab. Esta aplicación busca ayudarte a realizar autoexperimentos para descubrir cómo tus comportamientos te influyen, y forma parte de un esfuerzo de investigación científica más amplio para entender cómo distintas personas responden de manera diferente a los mismos comportamientos.
+<![CDATA[¡SCIENCE! te ayuda a realizar autoexperimentos para descubrir cómo tus comportamientos te influyen.
 \n\n
-Durante el transcurso de un experimento, se te pedirá que cambies tu comportamiento. Esto puede ser incómodo a veces, porque el cambio solicitado podría llevar temporalmente a peores resultados de bienestar que en otros períodos del experimento. Eres libre de abandonar el experimento en cualquier momento.
+Durante el proceso, se te pedirá que cambies un comportamiento por un tiempo. Esto puede ser incómodo a veces: el cambio que estás probando podría llevar temporalmente a peores resultados antes de que las cosas mejoren.
 \n\n
 Esta aplicación no sustituye el consejo médico profesional ni el sentido común.
 \n\n
-Por favor, envía cualquier pregunta, comentario o reporte de errores a sataylor@mit.edu.
-\n\n
-Al hacer clic en "Acepto" reconoces que esta aplicación funciona completamente en tu dispositivo: tus respuestas y los datos de pasos/sueño que lee de Health Connect se almacenan localmente y nunca se envían a ningún lugar.
+Esta aplicación funciona completamente en tu dispositivo: tus respuestas y los datos de pasos/sueño que lee de Health Connect se almacenan localmente y nunca se envían a ningún lugar.
 ]]>
     </string>
 
