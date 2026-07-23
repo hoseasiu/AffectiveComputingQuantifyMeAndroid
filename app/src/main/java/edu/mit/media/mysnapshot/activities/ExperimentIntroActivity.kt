@@ -4,12 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
 import edu.mit.media.mysnapshot.R
 import edu.mit.media.mysnapshot.engine.ExperimentType
 import edu.mit.media.mysnapshot.engine.ExperimentTypeRegistry
 import edu.mit.media.mysnapshot.engine.describe
 
-class ExperimentIntroActivity : PermissionCheckingAppCompatActivity() {
+class ExperimentIntroActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
