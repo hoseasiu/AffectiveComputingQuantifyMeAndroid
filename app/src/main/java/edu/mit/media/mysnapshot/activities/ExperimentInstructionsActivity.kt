@@ -359,7 +359,7 @@ private fun InstructionsContent(
             }
 
             Text(
-                text = "Stage ${outcome.currentStage + 1}",
+                text = stringResource(R.string.instructions_stage_header, outcome.currentStage + 1),
                 fontFamily = fonts.montserratBold,
                 fontSize = 24.sp,
                 modifier = Modifier.padding(bottom = 10.dp)
@@ -375,7 +375,7 @@ private fun InstructionsContent(
             )
 
             Text(
-                text = "Stage Progress",
+                text = stringResource(R.string.instructions_stage_progress_header),
                 fontFamily = fonts.montserratBold,
                 fontSize = 24.sp,
                 modifier = Modifier.padding(bottom = 10.dp)

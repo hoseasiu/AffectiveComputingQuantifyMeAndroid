@@ -130,6 +130,10 @@ This app runs entirely on your device: your answers and the step/sleep data it r
         <item>Almost done! Just this one last routine change, and we\'ll be able to calculate everything we need!</item>
     </string-array>
 
+    <!-- ExperimentInstructionsActivity stage headers (issue #58) -->
+    <string name="instructions_stage_header">Stage %1$d</string>
+    <string name="instructions_stage_progress_header">Stage Progress</string>
+
     <string name="restart_reason_missed_days"><![CDATA[
         You missed too many check-ins or tracker readings this stage, so we don\'t have enough data to trust the result. We have to start this stage over.
     ]]></string>

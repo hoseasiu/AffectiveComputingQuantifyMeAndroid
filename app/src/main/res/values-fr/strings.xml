@@ -92,6 +92,9 @@ Cette application fonctionne entièrement sur votre appareil : vos réponses ain
         <item>Presque terminé ! Encore ce dernier changement de routine, et nous pourrons calculer tout ce dont nous avons besoin !</item>
     </string-array>
 
+    <string name="instructions_stage_header">Étape %1$d</string>
+    <string name="instructions_stage_progress_header">Progression de l\'étape</string>
+
     <string name="restart_reason_missed_days"><![CDATA[
         Vous avez manqué trop de check-ins ou de relevés du capteur pendant cette étape, nous n\'avons donc pas assez de données pour faire confiance au résultat. Nous devons recommencer cette étape.
     ]]></string>
