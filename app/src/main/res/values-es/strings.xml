@@ -94,6 +94,7 @@ Esta aplicación funciona completamente en tu dispositivo: tus respuestas y los 
 
     <string name="instructions_stage_header">Etapa %1$d</string>
     <string name="instructions_stage_progress_header">Progreso de la etapa</string>
+    <string name="instructions_today_target_header">Objetivo de hoy</string>
 
     <string name="restart_reason_missed_days"><![CDATA[
         Te perdiste demasiados check-ins o lecturas del sensor en esta etapa, así que no tenemos suficientes datos para confiar en el resultado. Tenemos que reiniciar esta etapa.
