@@ -342,7 +342,7 @@ private fun InstructionsContent(
 
             if (outcome.currentStage != 0) {
                 Text(
-                    text = "Today's Target",
+                    text = stringResource(R.string.instructions_today_target_header),
                     fontFamily = fonts.montserratBold,
                     fontSize = 24.sp,
                     textAlign = TextAlign.Center,
