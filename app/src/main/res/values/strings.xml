@@ -4,15 +4,13 @@
     <string name="title_activity_main">SCIENCE!</string>
 
     <string name="terms_text">
-<![CDATA[This app is a part of a research project conducted by the Affective Computing Group at the MIT Media Lab. This app seeks to help you run self-experiments to find how your behaviors influence you, and it is a part of a larger scientific research effort to understand how different people respond differently to the same behaviors.
+<![CDATA[SCIENCE! helps you run self-experiments to find out how your behaviors affect you.
 \n\n
-During the course of an experiment, you will be asked to change your behavior. This may be uncomfortable at times because you will be asked to change your behavior that could temporarily lead to worse wellbeing outcomes than during other periods of the experiment. You are free to drop out of the experiment at any time.
+Along the way, you\'ll be asked to change a behavior for a while. This can feel uncomfortable at times -- the change you\'re testing may temporarily lead to worse outcomes before things improve.
 \n\n
 This app is not a substitute for professional medical advice or common sense.
 \n\n
-Please send any questions, comments, or bug reports to sataylor@mit.edu.
-\n\n
-By clicking "I agree" you acknowledge that this app runs entirely on your device: your answers and the step/sleep data it reads from Health Connect are stored locally and are never sent anywhere.
+This app runs entirely on your device: your answers and the step/sleep data it reads from Health Connect are stored locally and are never sent anywhere.
 ]]>
     </string>
 

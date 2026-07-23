@@ -122,15 +122,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun onTermsCheckedChange(checked: Boolean) {
-        // Mirrors the legacy checkbox: once accepted it locks (isEnabled = false), and
-        // unchecking before that point is a local UI toggle only -- never persisted or
-        // advanced, matching `QuestionCheckboxFragment`'s listener only acting `if (value)`.
-        if (_uiState.value.acceptedTerms) return
-        if (checked) {
-            _uiState.update { it.copy(acceptedTerms = true) }
-            advance(SettingsStep.TERMS.ordinal)
-        }
+    fun onTermsContinue() {
+        _uiState.update { it.copy(acceptedTerms = true) }
+        advance(SettingsStep.TERMS.ordinal)
     }
 
     fun onRequestHealthConnectPermissions() {
