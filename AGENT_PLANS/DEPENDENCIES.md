@@ -77,7 +77,7 @@ Two agents can work these concurrently only if they stay in different rows.
 | `AndroidManifest.xml` | **#18** (open), ~~#22, #25~~ landed | #18 would add a Health Connect rationale activity — the only open issue touching the manifest right now. |
 | `activities/questions/` + `view/` | ~~#22, #20~~ | Deleted by #22; moot now (#20 no longer risks throwaway work — see dependency graph above). |
 | `data/ExperimentExporter` | ~~#35~~ landed, **#27** (open) | #27 changing what "an experiment" is will likely touch export too. |
-| `app/build.gradle` | ~~#23~~ (partially landed — see `IMPROVEMENTS.md` §4 note on the orphaned gson/dependency-drop work), #10 (CI emulator, no issue yet) | Dependency churn; conflicts are usually trivial to resolve. |
+| `app/build.gradle` | ~~#23~~ landed in full (Joda→`java.time`, gson bump, nineoldandroids/Picasso/roundedimageview/legacy-support removal), #10 (CI emulator, no issue yet) | Dependency churn; conflicts are usually trivial to resolve. |
 | `strings.xml` | ~~#26, #28, #22~~ all landed | No longer a live hot spot. |
 
 The only genuinely live overlap risk today is **Room schema** (#27 alone, but building on what

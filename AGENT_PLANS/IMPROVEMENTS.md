@@ -42,7 +42,7 @@ on what — it is derived live, never stored here.
 | 8 | Dead `UserProfileEntity`/`UserProfileDao` deleted | PR #30 (#24) |
 | — | Fresh-install black screen; config Continue NPE; date-picker crash | PR #14, #16 |
 | 7.4 | Hardcoded check-in wizard strings externalized to `strings.xml`; French/Spanish locales added | (#26) |
-| 4 | Joda-Time → `java.time` swap (engine, Room, UI, notifications) | #23 (partial) |
+| 4 | Joda-Time → `java.time` swap (engine, Room, UI, notifications) | #23 (Joda step; dependency-drop step below) |
 | 2.2 | Finish ViewModel migration: `MainActivity`, `ExperimentComplete`, `ExperimentInstructions` | PR #40 (#19) |
 | 7.2 | Portrait-only lock + `configChanges` overrides removed from all 13 activities; state-holding `remember`s promoted to `rememberSaveable`; legacy intro/created screens wrapped in `ScrollView` so long copy doesn't clip in landscape | (#25) |
 | 7.5 | Two more built-in experiments recombining existing signals (`stepshappiness`, `leisureproductivity`), config-only | PR #38 (#28) |
@@ -51,25 +51,17 @@ on what — it is derived live, never stored here.
 | — | Fixed picker crash whenever a custom experiment type exists (flattened `experiment_choose_generic` to a single vector) | PR #59 (#56) |
 | — | Deleted `PermissionCheckingAppCompatActivity`, fixing an infinite permission-request loop on Intro/Complete screens | PR #60 (#57) |
 | 7.4 | Localized remaining hardcoded strings missed by #26: stage headers and "Today's Target" header on `ExperimentInstructionsActivity` | PR #61, #62 (#58) |
+| 4 | gson bumped to 2.14.0; `nineoldandroids`/Picasso/`roundedimageview`/`legacy-support-v4`/`legacy-support-v13` removed (all unreferenced once #22 retired their last consumers) | (#23) |
 
 ### Still open
 
 | § | Item | Issue |
 |---|---|---|
-| 4 | gson bump, drop nineoldandroids/Picasso/roundedimageview/legacy-support (Joda swap landed) | *(orphaned — see note)* |
 | 6.4 | Health Connect Play-readiness: rationale activity, privacy policy, empty states | #18 |
 | 7.1 | Accessibility audit for every screen beyond check-in | #20 |
 | 7.3 | Support multiple concurrent experiments | #27 |
 | 10 | Emulator in CI so `androidTest` actually runs | *(no issue yet)* |
 | 10 | `connectedDebugAndroidTest` hangs indefinitely even on a real physical device — `ExperimentCheckinScreenTest` (#21/#36) has never actually executed anywhere, only compiled | #63 |
-
-> **Note on #23:** the issue was closed on 2026-07-22, but its own comments say the gson
-> bump and nineoldandroids/Picasso/roundedimageview/legacy-support removal "remain open,
-> gated on #22" — only the Joda→java.time swap was actually done under it. #22 landed the
-> same day, so the gating condition is satisfied, but no new issue was filed for the rest and
-> the dependencies are still in `app/build.gradle` today, confirmed unreferenced anywhere in
-> `app/src/main/java`/`res`. This is real, doable work with no open issue tracking it —
-> re-open #23 or file a fresh issue before assuming it's done.
 
 ---
 
@@ -113,11 +105,19 @@ the validated research algorithm. Swapped to `java.time` behind the full test su
 `ExperimentEngine.kt` itself never referenced Joda directly, so the algorithm was untouched;
 the change was mechanical everywhere else (`Converters`/entities → `OffsetDateTime`, engine/
 repository/`HealthConnectManager` → `java.time.LocalDate`, the notification-time widgets →
-`java.time.LocalTime`). Still open: bump `gson`, drop `nineoldandroids`/Picasso/
-roundedimageview/legacy-support. #22 (the gating condition) landed the same day as the Joda
-swap, so nothing blocks this anymore — but #23 was closed without a follow-up issue for it,
-and the dependencies are still in `app/build.gradle`, confirmed unreferenced in source. Treat
-this as open work with no tracking issue, not as done.
+`java.time.LocalTime`). #22 (Compose onboarding migration) then retired the last consumers of
+`nineoldandroids`/Picasso/`roundedimageview`/`legacy-support-v4`/`legacy-support-v13` (the
+vendored Flyco page indicator and the legacy `view/`/`activities/questions/` zoo), but #23 was
+closed the same day without a follow-up for the rest of its own scope -- gson stayed at a
+2015-era 2.3.1 and the four now-dead libraries stayed declared with zero source references.
+Caught in a 2026-07-27 doc audit and finished under the same issue (#23 reopened): gson bumped
+to 2.14.0 (a version-only bump -- the API surface used here, `Gson()`/`GsonBuilder`/`toJson`/
+`fromJson`/`TypeToken`, is unchanged), and `nineoldandroids`, `com.makeramen:roundedimageview`,
+`androidx.legacy:legacy-support-v13`, and `androidx.legacy:legacy-support-v4` all dropped from
+`app/build.gradle`. `com.squareup.picasso:picasso` was also confirmed unreferenced and dropped
+in the same pass even though it wasn't itemized in #23's remaining-work list, since the issue's
+own title named it. **Not visually verified on-device** -- no behavior change is expected
+(dependency removal only), confirmed via `testDebugUnitTest`/`assembleDebug`.
 
 ## §5 — Health Connect
 
