@@ -75,7 +75,7 @@ Two agents can work these concurrently only if they stay in different rows.
 | `AndroidManifest.xml` | #18, #22 | #25 (stripped `screenOrientation`/`configChanges`) landed; #18 adds a rationale activity; #22 removes legacy activities. |
 | `activities/questions/` + `view/` | #22, #20 | #22 deletes most of this; see soft ordering above. |
 | `data/ExperimentExporter` | #35, #27 | #35 adds custom-signal fields; #27 changes what "an experiment" is. |
-| `app/build.gradle` | #23, #10 (CI emulator) | Dependency churn; conflicts are usually trivial to resolve. |
+| `app/build.gradle` | #10 (CI emulator) | #23 (Joda→`java.time`, gson bump, nineoldandroids/Picasso/roundedimageview/legacy-support removal) landed in full; dependency churn from other issues is usually trivial to resolve. |
 | `strings.xml` | #26, #28, #22 | Append-only from different issues; easy conflicts. |
 
 ---

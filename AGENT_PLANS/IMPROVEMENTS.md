@@ -45,12 +45,12 @@ on what — it is derived live, never stored here.
 | 4 | Joda-Time → `java.time` swap (engine, Room, UI, notifications) | #23 (partial) |
 | 2.2 | Finish ViewModel migration: `MainActivity`, `ExperimentComplete`, `ExperimentInstructions` | PR #40 (#19) |
 | 7.2 | Portrait-only lock + `configChanges` overrides removed from all 13 activities; state-holding `remember`s promoted to `rememberSaveable`; legacy intro/created screens wrapped in `ScrollView` so long copy doesn't clip in landscape | (#25) |
+| 4 | gson bumped to 2.14.0; `nineoldandroids`/Picasso/`roundedimageview`/`legacy-support-v4`/`legacy-support-v13` removed (all unreferenced once #22 retired their last consumers) | (#23) |
 
 ### Still open
 
 | § | Item | Issue |
 |---|---|---|
-| 4 | gson bump, drop nineoldandroids/Picasso/roundedimageview/legacy-support (Joda swap landed) | #23 |
 | 6.4 | Health Connect Play-readiness: rationale activity, privacy policy, empty states | #18 |
 | 7.1 | Accessibility audit for every screen beyond check-in | #20 |
 | 7.3 | Support multiple concurrent experiments | #27 |
@@ -100,8 +100,19 @@ the validated research algorithm. Swapped to `java.time` behind the full test su
 `ExperimentEngine.kt` itself never referenced Joda directly, so the algorithm was untouched;
 the change was mechanical everywhere else (`Converters`/entities → `OffsetDateTime`, engine/
 repository/`HealthConnectManager` → `java.time.LocalDate`, the notification-time widgets →
-`java.time.LocalTime`). Still open: bump `gson`, drop `nineoldandroids`/Picasso/
-roundedimageview/legacy-support -- gated on #22 retiring their last consumers.
+`java.time.LocalTime`). #22 (Compose onboarding migration) then retired the last consumers of
+`nineoldandroids`/Picasso/`roundedimageview`/`legacy-support-v4`/`legacy-support-v13` (the
+vendored Flyco page indicator and the legacy `view/`/`activities/questions/` zoo), but #23 was
+closed the same day without a follow-up for the rest of its own scope -- gson stayed at a
+2015-era 2.3.1 and the four now-dead libraries stayed declared with zero source references.
+Caught in a 2026-07-27 doc audit and finished under the same issue (#23 reopened): gson bumped
+to 2.14.0 (a version-only bump -- the API surface used here, `Gson()`/`GsonBuilder`/`toJson`/
+`fromJson`/`TypeToken`, is unchanged), and `nineoldandroids`, `com.makeramen:roundedimageview`,
+`androidx.legacy:legacy-support-v13`, and `androidx.legacy:legacy-support-v4` all dropped from
+`app/build.gradle`. `com.squareup.picasso:picasso` was also confirmed unreferenced and dropped
+in the same pass even though it wasn't itemized in #23's remaining-work list, since the issue's
+own title named it. **Not visually verified on-device** -- no behavior change is expected
+(dependency removal only), confirmed via `testDebugUnitTest`/`assembleDebug`.
 
 ## §5 — Health Connect
 
