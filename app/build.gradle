@@ -162,9 +162,7 @@ dependencies {
     // AndroidX
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.gridlayout:gridlayout:1.0.0'
-    implementation 'androidx.legacy:legacy-support-v13:1.0.0'
     implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'androidx.fragment:fragment:1.8.4'
     implementation 'androidx.viewpager:viewpager:1.0.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
@@ -204,12 +202,7 @@ dependencies {
 
     // Gson itself is still used to serialize experiment stage state into Room columns
     // (see ExperimentStageState.kt) -- unrelated to the deleted networking layer.
-    implementation 'com.google.code.gson:gson:2.3.1'
-    implementation 'com.squareup.picasso:picasso:2.71828'
-    // FlycoPageIndicator_Lib is vendored directly under java/com/flyco/pageindicator --
-    // both the jcenter artifact and its jitpack build are dead. See CONTRIBUTING.md.
-    implementation 'com.nineoldandroids:library:2.4.0'
-    implementation 'com.makeramen:roundedimageview:2.3.0'
+    implementation 'com.google.code.gson:gson:2.14.0'
 
     // Health Connect (Phase 3 replacement for the dead Jawbone UP SDK)
     implementation 'androidx.health.connect:connect-client:1.1.0-alpha07'
