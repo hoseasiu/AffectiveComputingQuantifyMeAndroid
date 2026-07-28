@@ -682,8 +682,12 @@ sensor data will hide the real adherence problems the paper is trying to solve.
   it at all after Phase 2).
 - Any migration path for existing users' data currently stored on the live Django backend —
   if that matters, it's a one-time, separate export/import tool, not part of this plan.
-- Adding new experiment types beyond the original 4 (covered as a Phase 5.4 architectural
-  question, not committed work).
+- ~~Adding new experiment types beyond the original 4 (covered as a Phase 5.4 architectural
+  question, not committed work).~~ **Superseded.** This happened: three more built-in types
+  shipped (`exercisestress`, `stepshappiness`, `leisureproductivity`), and beyond that, issues
+  #31–#35 (2026-07-22) added a full user-defined-custom-experiment feature — the "architectural
+  question" was answered affirmatively and built, not just designed. See "Landed since
+  2026-07-22" below and `IMPROVEMENTS.md` §9.
 - iOS — the paper and this codebase are Android-only; no cross-platform ask here.
 
 ---
@@ -737,13 +741,50 @@ All phases in the plan above are substantially complete and merged to `master`.
 - `d80890d` (PR #37, issue #29) — Health Connect **exercise-minutes** signal.
 - `bf3181e` — `CLAUDE.md` tracked in git so it reaches every worktree by checkout.
 
+## Landed since 2026-07-22
+
+A second large batch, beyond what the snapshot above already covers:
+
+- **Custom user-defined experiments** (issues #31–#35, PR #45/#49/#50/#52/#51): a
+  `SignalRef`/`CustomSignalDef`/`CustomRangePresets` data model, a data-driven check-in wizard
+  that renders custom scale/numeric questions, `CreateExperimentActivity`/
+  `CreateExperimentViewModel` (the "create your own experiment" Compose wizard, launched from
+  `ExperimentChooseActivity`), picker integration, and custom-signal answers in
+  `ExperimentExporter`'s JSON export. This is a real product feature, not just config — see
+  `IMPROVEMENTS.md` §9 and `CLAUDE.md`'s engine section.
+- `234746e` (PR #48, issue #25) — removed the portrait-only lock and all `configChanges`
+  overrides; every screen now supports rotation and tablet layouts.
+- `0343e29` (PR #46, issue #22) — onboarding wizard migrated to Compose; legacy
+  `QuestionActivity`/`ViewPager`/`view/` zoo retired.
+- `cb48d2e` (PR #47, issue #26) — check-in wizard copy localized; French and Spanish
+  translations added.
+- `2f6132b` (PR #44, issue #23) — Joda-Time → `java.time` swap (the gson bump and
+  nineoldandroids/Picasso/roundedimageview/legacy-support removal that were scoped into the
+  same issue were **not** done and #23 was closed anyway — see `IMPROVEMENTS.md` §4).
+- PR #38 (issue #28) — two more built-in experiment types, `stepshappiness` and
+  `leisureproductivity`, config-only.
+- PR #55 (issue #54) — removed MIT Media Lab/"research project"/consent-checkbox framing from
+  onboarding's first screen (all locales); it now reads as an ordinary self-tracking app.
+  Scoped to in-app UX only — `README.md`'s origin story and the MIT License copyright notice
+  are untouched.
+- PR #59 (issue #56), PR #60 (issue #57) — fixed a picker crash whenever a custom experiment
+  type exists, and deleted `PermissionCheckingAppCompatActivity` entirely (it caused an
+  infinite permission-request loop on Intro/Complete screens).
+- PR #61, PR #62 (issue #58) — localized stage headers and the "Today's Target" header on
+  `ExperimentInstructionsActivity`, closing a gap #26 had missed.
+- **Issue #63 (open, no fix yet)**: `connectedDebugAndroidTest` was found to hang
+  indefinitely on a real physical device during an on-device QA sweep (issue #53) — the
+  `androidTest` suite (#21) has therefore *never actually executed*, anywhere, only compiled.
+
 ## Testing
 
-147 JVM unit tests pass on `master`. `app/src/androidTest` exists but **nothing runs it
+203 JVM unit tests pass on `master`. `app/src/androidTest` exists but **nothing runs it
 automatically** — the `ubuntu-latest` CI runner has no emulator, so
 `ExperimentCheckinScreenTest` only runs when a human or an agent with adb access launches
-it. Wiring an emulator into CI is still open. Most UI-facing changes land "not visually
-verified on-device"; treat those notes as real gaps.
+it — and per issue #63, even that manual path currently hangs indefinitely on a real device
+rather than completing, so this test has never actually finished a run. Wiring an emulator
+into CI is still open. Most UI-facing changes land "not visually verified on-device"; treat
+those notes as real gaps.
 
 ## What remains
 

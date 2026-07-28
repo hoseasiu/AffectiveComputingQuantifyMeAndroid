@@ -38,25 +38,38 @@ on what — it is derived live, never stored here.
 | 6.1 | Adherence support: target preview + mid-day nudges | PR #8 |
 | 7.1 | Accessibility on the check-in screen only | `db2784d` |
 | 7.5 | JSON-config experiment types + opt-in local export | PR #9 |
-| 8 | Real unit-test suite (147 tests) + `androidTest` source set | PR #36 (#21) |
+| 8 | Real unit-test suite (203 tests) + `androidTest` source set | PR #36 (#21) |
 | 8 | Dead `UserProfileEntity`/`UserProfileDao` deleted | PR #30 (#24) |
 | — | Fresh-install black screen; config Continue NPE; date-picker crash | PR #14, #16 |
 | 7.4 | Hardcoded check-in wizard strings externalized to `strings.xml`; French/Spanish locales added | (#26) |
 | 4 | Joda-Time → `java.time` swap (engine, Room, UI, notifications) | #23 (partial) |
 | 2.2 | Finish ViewModel migration: `MainActivity`, `ExperimentComplete`, `ExperimentInstructions` | PR #40 (#19) |
 | 7.2 | Portrait-only lock + `configChanges` overrides removed from all 13 activities; state-holding `remember`s promoted to `rememberSaveable`; legacy intro/created screens wrapped in `ScrollView` so long copy doesn't clip in landscape | (#25) |
+| 7.5 | Two more built-in experiments recombining existing signals (`stepshappiness`, `leisureproductivity`), config-only | PR #38 (#28) |
+| 9 | Custom-signal epic, all five parts: Room/engine data model (#31), data-driven check-in wizard (#32), "create your own experiment" wizard UI (#33), picker integration (#34), custom answers in JSON export (#35) | PR #45, #49, #50, #52, #51 |
+| — | Removed MIT Media Lab/"research project"/consent-checkbox framing from onboarding's first screen (all 3 locales); plain informational screen, no accept gate | PR #55 (#54) |
+| — | Fixed picker crash whenever a custom experiment type exists (flattened `experiment_choose_generic` to a single vector) | PR #59 (#56) |
+| — | Deleted `PermissionCheckingAppCompatActivity`, fixing an infinite permission-request loop on Intro/Complete screens | PR #60 (#57) |
+| 7.4 | Localized remaining hardcoded strings missed by #26: stage headers and "Today's Target" header on `ExperimentInstructionsActivity` | PR #61, #62 (#58) |
 
 ### Still open
 
 | § | Item | Issue |
 |---|---|---|
-| 4 | gson bump, drop nineoldandroids/Picasso/roundedimageview/legacy-support (Joda swap landed) | #23 |
+| 4 | gson bump, drop nineoldandroids/Picasso/roundedimageview/legacy-support (Joda swap landed) | *(orphaned — see note)* |
 | 6.4 | Health Connect Play-readiness: rationale activity, privacy policy, empty states | #18 |
 | 7.1 | Accessibility audit for every screen beyond check-in | #20 |
 | 7.3 | Support multiple concurrent experiments | #27 |
-| 7.5 | More built-in experiments recombining existing signals | #28 (PR #38 open) |
-| 9 | User-defined custom experiment signals (epic) | #31–#35 |
 | 10 | Emulator in CI so `androidTest` actually runs | *(no issue yet)* |
+| 10 | `connectedDebugAndroidTest` hangs indefinitely even on a real physical device — `ExperimentCheckinScreenTest` (#21/#36) has never actually executed anywhere, only compiled | #63 |
+
+> **Note on #23:** the issue was closed on 2026-07-22, but its own comments say the gson
+> bump and nineoldandroids/Picasso/roundedimageview/legacy-support removal "remain open,
+> gated on #22" — only the Joda→java.time swap was actually done under it. #22 landed the
+> same day, so the gating condition is satisfied, but no new issue was filed for the rest and
+> the dependencies are still in `app/build.gradle` today, confirmed unreferenced anywhere in
+> `app/src/main/java`/`res`. This is real, doable work with no open issue tracking it —
+> re-open #23 or file a fresh issue before assuming it's done.
 
 ---
 
@@ -101,7 +114,10 @@ the validated research algorithm. Swapped to `java.time` behind the full test su
 the change was mechanical everywhere else (`Converters`/entities → `OffsetDateTime`, engine/
 repository/`HealthConnectManager` → `java.time.LocalDate`, the notification-time widgets →
 `java.time.LocalTime`). Still open: bump `gson`, drop `nineoldandroids`/Picasso/
-roundedimageview/legacy-support -- gated on #22 retiring their last consumers.
+roundedimageview/legacy-support. #22 (the gating condition) landed the same day as the Joda
+swap, so nothing blocks this anymore — but #23 was closed without a follow-up issue for it,
+and the dependencies are still in `app/build.gradle`, confirmed unreferenced in source. Treat
+this as open work with no tracking issue, not as done.
 
 ## §5 — Health Connect
 
@@ -132,7 +148,10 @@ Play listing.
   introduced elsewhere.
 - **7.5 Experiment types** — data-driven via `assets/experiment_types.json` +
   `ExperimentTypeRegistry`. A type reusing existing signals is config + art only; a genuinely
-  new signal needs a new `SignalSource` and a fetch implementation.
+  new signal needs a new `SignalSource` and a fetch implementation. Seven built-in types now
+  (up from the original 4; #28 added `stepshappiness`/`leisureproductivity`, and an earlier
+  pass added `exercisestress`). On top of that, §9 landed fully custom user-defined
+  experiments, so the built-in list is no longer the ceiling on what someone can run.
 
 ## §8 — Testing
 
@@ -145,15 +164,21 @@ slow." That happened for real (`ExperimentCompleteViewModelTest`, fixed in #40).
 The suite runs in ~25s; a full cold build plus tests is under 2 minutes. If a run takes
 materially longer, suspect a hang or Gradle lock contention (see §10), not genuine slowness.
 
-173 JVM unit tests. `androidTest` exists but **no emulator runs anywhere in CI** (§10) —
-`ExperimentCheckinScreenTest` only runs when launched by hand. UI changes routinely land
-"not visually verified on-device"; those notes are real gaps, not boilerplate.
+203 JVM unit tests. `androidTest` exists but **no emulator runs anywhere in CI** (§10) —
+`ExperimentCheckinScreenTest` only runs when launched by hand, and per #63, even a manual
+launch on a real device currently hangs indefinitely rather than completing. UI changes
+routinely land "not visually verified on-device"; those notes are real gaps, not boilerplate.
 
-## §9 — Custom user-defined experiments (epic, #31–#35)
+## §9 — Custom user-defined experiments (epic, #31–#35) — landed
 
-`#31` (Room schema for custom signals) is foundational and blocks `#32`–`#35`. It touches
-the same Room schema as `#27`; see [`DEPENDENCIES.md`](DEPENDENCIES.md) before starting
-either.
+All five parts merged 2026-07-22: `#31` (Room/engine data model — `CustomSignalDef`,
+`SignalRef.Custom`, `CustomRangePresets`), `#32` (data-driven check-in wizard for custom
+questions), `#33` (`CreateExperimentActivity`/`CreateExperimentViewModel`, the "create your own
+experiment" wizard), `#34` (picker integration in `ExperimentChooseActivity`, including a
+crash fix in #56 for when a custom type exists), and `#35` (custom-signal answers included in
+`ExperimentExporter`'s JSON export). This touched the same Room schema as `#27`
+(multiple-concurrent-experiments, still open) — see [`DEPENDENCIES.md`](DEPENDENCIES.md) for
+that overlap if picking up #27 now.
 
 ## §10 — CI
 
@@ -161,9 +186,14 @@ either.
 `assembleRelease`, `assembleDebugAndroidTest` — the last only *compiles* the instrumentation
 APK.
 
-Two real gaps, neither with an issue yet:
+Real gaps:
 1. **CI is `workflow_dispatch` only** (manual, since `ebf1e65`). Nothing runs on push or PR, so
    a branch is unverified unless someone runs the suite locally or triggers the workflow. Every
    PR review should confirm the suite was run.
-2. **No emulator anywhere.** Adding `reactivecircus/android-emulator-runner` would make
-   `androidTest` actually execute.
+2. **No emulator anywhere in CI.** Adding `reactivecircus/android-emulator-runner` would make
+   `androidTest` actually execute. *(No issue yet.)*
+3. **Even outside CI, `androidTest` has never actually run.** #63: `connectedDebugAndroidTest`
+   hung indefinitely on a real physical device across three attempts (Gradle daemon alive,
+   CPU flat, zero device-side process spawned, no logcat output) — a different failure mode
+   than plain slowness, root cause not yet isolated. `ExperimentCheckinScreenTest` (#21/#36)
+   has been compiled/packaged repeatedly but never actually executed anywhere.

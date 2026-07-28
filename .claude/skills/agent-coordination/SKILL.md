@@ -43,17 +43,20 @@ That tells you an issue is free. It does not tell you whether it's *ready*.
 Before claiming, check [`AGENT_PLANS/DEPENDENCIES.md`](../../../AGENT_PLANS/DEPENDENCIES.md)
 for two things it holds and nothing else can:
 
-- **Hard blockers** — e.g. #32/#33/#35 all need #31's schema first; #25 needs #19 finished.
-  Claiming a blocked issue means either waiting or building on sand.
-- **File-overlap risk** — issues with no formal dependency that edit the same files anyway.
-  The Room schema row (#31, #27) is called out as the highest-conflict pair in the repo and
-  should not run concurrently without agreeing migration version order first.
+- **Hard blockers** — an issue needing a schema, model, or screen another issue hasn't
+  landed yet. Claiming a blocked issue means either waiting or building on sand.
+- **File-overlap risk** — issues with no formal dependency that edit the same files anyway
+  (the Room schema is the repo's historically highest-conflict area — check
+  `DEPENDENCIES.md`'s hot-spot table for whatever currently touches it before starting
+  schema/migration work, and agree version order with anyone else in that area first).
 
 Two agents in different rows of the overlap table can work in parallel safely. Two in the
 same row will merge-conflict even though nothing said they were dependent.
 
-Also honor the notes there: #26 is externally blocked on product input — don't claim it
-expecting to finish.
+Also honor any notes on issues being externally blocked (e.g. on product input) — don't claim
+one expecting to finish if `DEPENDENCIES.md` says it's waiting on something outside the repo.
+The specific issue numbers in `DEPENDENCIES.md` turn over as work lands — read it fresh each
+session rather than trusting a remembered example.
 
 ## 3. Claim it on the issue — before writing code
 

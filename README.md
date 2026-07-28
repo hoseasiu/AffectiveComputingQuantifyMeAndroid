@@ -4,12 +4,19 @@ Many health recommendations aren't tuned to a specific individual. Maybe you sho
 
 QuantifyMe walks you through a self-experiment: pick a question (e.g. "how does my sleep duration affect my productivity?"), get a daily behavioral target for four staged phases, check in once a day, and see which target level actually produced the best outcome for you.
 
-The four built-in experiments:
+The built-in experiments:
 
 * How does my leisure time affect my happiness?
 * How do inconsistent bedtimes affect my stress level?
 * How does my nightly sleep affect my productivity?
 * How does my activity level affect my sleep efficiency?
+* How does exercise affect my stress level?
+* How does my activity level affect my happiness?
+* How does my leisure time affect my productivity?
+
+You can also create your own experiment from the "choose an experiment" screen, pairing any
+built-in signal (steps, sleep, exercise minutes, leisure time, ...) with a custom question you
+define yourself, answered on a scale or numeric entry during check-in.
 
 ## This fork vs. the original
 
@@ -22,6 +29,8 @@ Other notable changes since forking:
 * **Jetpack Compose UI** with a `@HiltViewModel` per screen, replacing the original XML/`Activity`/`Fragment` screens. Dark theme and optional Material You dynamic color are supported.
 * **Kotlin + Room + Hilt + WorkManager**, replacing the original Java + `SharedPreferences` + `AlarmManager` stack. Notifications (daily check-in reminder, mid-day adherence nudge) are scheduled via `WorkManager` so they survive Doze/reboots correctly.
 * **Experiment types are data-driven**, defined in [`app/src/main/assets/experiment_types.json`](app/src/main/assets/experiment_types.json) rather than hardcoded subclasses, so new experiments can be added without touching the engine.
+* **User-defined custom experiments**: beyond the built-in types, you can pair any built-in signal with a fully custom question of your own (`CreateExperimentActivity`/`CreateExperimentViewModel`), answered via a scale or numeric-entry question during check-in, and included in JSON export.
+* **No institutional/research framing.** Onboarding no longer presents the app as an MIT Media Lab research study with a consent checkbox — it reads as an ordinary self-tracking app. (The MIT License copyright notice and the paper citations below are unrelated legal/historical items and are unchanged.)
 * **Product improvements pulled from the original paper's own "future work" section**: opt-in mid-experiment progress visualization, explanations of *why* a stage restarted and what counts as "a night" for sleep data, a multi-day-ahead target preview, and a mid-day encouragement notification — all things the original team identified as worth trying but didn't ship.
 * **User-initiated data export**: from the History screen, export any experiment's check-ins and result as JSON via the system share sheet. This is the only way data ever leaves the device — there is no automatic upload.
 * **Privacy/manifest hardening**: no crash-reporting network calls, no unused permissions, backups disabled.
@@ -45,11 +54,11 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full local build setup, includi
 
 ## Architecture
 
-* `engine/` — the ported single-case-experiment algorithm (stage sequencing, target computation, stability/restart rules, confidence calculation), driven by `experiment_types.json`. Pure Kotlin, no Android dependency.
+* `engine/` — the ported single-case-experiment algorithm (stage sequencing, target computation, stability/restart rules, confidence calculation), driven by `experiment_types.json`. Also defines the user-defined-signal model (`CustomSignalDef`, `SignalRef.Custom`) and `CustomRangePresets` used by custom experiments. Pure Kotlin, no Android dependency.
 * `data/` — `ExperimentRepository` (the on-device replacement for the old REST API) and `ExperimentExporter`.
 * `database/` — Room entities and DAOs (`ExperimentEntity`, `CheckinEntity`).
-* `health/` — `HealthConnectManager`, wrapping Health Connect reads for steps and sleep.
-* `activities/` + `viewmodel/` — the Compose screens and their `@HiltViewModel`s (choose experiment → intro → config → daily check-in → complete/history/progress).
+* `health/` — `HealthConnectManager`, wrapping Health Connect reads for steps, sleep, and exercise minutes.
+* `activities/` + `viewmodel/` — the Compose screens and their `@HiltViewModel`s (choose experiment → intro → config → daily check-in → complete/history/progress), plus `CreateExperimentActivity`/`CreateExperimentViewModel` for defining a custom experiment.
 * `notifications/` — `WorkManager`-based daily check-in reminder and mid-day adherence nudge.
 * `ui/theme/` — Compose theme (colors, typography, dark/dynamic color).
 

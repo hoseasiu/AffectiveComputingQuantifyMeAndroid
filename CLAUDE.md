@@ -66,12 +66,13 @@ The two rules that matter even if you never open the skill:
     store-ready)
   - `./gradlew testDebugUnitTest` — run the unit test suite
   - `./gradlew clean`
-- **There is now a real unit test suite** (147 tests on `master` as of 2026-07-22) under `app/src/test/`
-  — DAOs, `ExperimentEngine`/`ExperimentTypeConfig`, `ExperimentRepository` (including the three
-  Health-Connect-backed experiment types), `HealthConnectManager` (via a `HealthConnectGateway`
-  seam + `FakeHealthConnectGateway`, since the real client's response types have library-`internal`
-  constructors a fake can't produce directly), `ExperimentExporter`, `CheckinReminderScheduler`/
-  `AdherenceNudgeScheduler`, and ViewModels.
+- **There is now a real unit test suite** (203 tests on `master` as of 2026-07-27) under `app/src/test/`
+  — DAOs, `ExperimentEngine`/`ExperimentTypeConfig`, `ExperimentRepository` (including the
+  Health-Connect-backed and user-defined-custom-signal experiment types), `HealthConnectManager`
+  (via a `HealthConnectGateway` seam + `FakeHealthConnectGateway`, since the real client's response
+  types have library-`internal` constructors a fake can't produce directly), `ExperimentExporter`,
+  `CheckinReminderScheduler`/`AdherenceNudgeScheduler`, and ViewModels (including
+  `CreateExperimentViewModel`).
 - **`app/src/androidTest` now exists** (issue #21): a `HiltTestRunner` (swaps in
   `HiltTestApplication`) and `ExperimentCheckinScreenTest`, a Compose UI test that seeds a real
   experiment into the on-device Room DB and drives the actual check-in wizard end-to-end via
@@ -83,9 +84,13 @@ The two rules that matter even if you never open the skill:
   on-device/emulator verification happens automatically anywhere in this project** — the current
   `ubuntu-latest` CI runner has no emulator, so `ExperimentCheckinScreenTest` only ever runs when a
   human (or an agent with device/adb access) launches it manually. Wiring up an emulator in CI (e.g.
-  `reactivecircus/android-emulator-runner`) is a known open follow-up, not done as part of #21. Most
-  UI-facing changes land with an explicit "not visually verified on-device" note in `MODERNIZE.md`/
-  `IMPROVEMENTS.md` — treat those notes as real gaps, not boilerplate.
+  `reactivecircus/android-emulator-runner`) is a known open follow-up, not done as part of #21. **Even
+  on a real device it doesn't currently work**: issue #63 found `connectedDebugAndroidTest` hangs
+  indefinitely on a physical device with no device-side process ever spawned, so
+  `ExperimentCheckinScreenTest` has never actually been executed anywhere, only compiled — root
+  cause not yet isolated. Most UI-facing changes land with an explicit "not visually verified
+  on-device" note in `MODERNIZE.md`/`IMPROVEMENTS.md` — treat those notes as real gaps, not
+  boilerplate.
 - **Required local config before building** (all gitignored, none checked in):
   - `local.properties` — `sdk.dir=<path to your Android SDK>`.
   - `app/src/main/res/values/base_url.xml` — copy from `app/base_url.xml.template` (the template
@@ -116,6 +121,14 @@ The two rules that matter even if you never open the skill:
   asset change; a genuinely new signal source still needs a new `SignalSource` + fetch
   implementation. Drawable/layout resource IDs stay in Kotlin maps in `ExperimentTypeRegistry`
   (compile-time R IDs can't live in JSON).
+- **User-defined custom experiments** (issues #31–#35, all landed): a `SignalRef` sealed class
+  lets an experiment's input or output be either a built-in `SignalSource` or a user-authored
+  `CustomSignalDef` (a free-text question + a scale or numeric-entry answer shape, backed by
+  `CustomRangePresets`). `CreateExperimentActivity`/`CreateExperimentViewModel` is the "create your
+  own experiment" wizard (launched from `ExperimentChooseActivity`); the daily check-in wizard,
+  the experiment picker, and `ExperimentExporter`'s JSON export all handle custom signals
+  end-to-end alongside built-in ones. Not gated behind any flag — this is a normal, shipped path,
+  not an experimental one despite the "epic" framing in `IMPROVEMENTS.md` §9's original scoping.
 - `data/ExperimentRepository.kt` (Hilt-injected, coroutines/`Flow`-based) is the on-device
   replacement for every old REST endpoint (`start_experiment`, `experiment_checkin`,
   `refresh_instructions`, `cancel_experiment`) — orchestrates `ExperimentEngine` against Room.
@@ -128,12 +141,17 @@ The two rules that matter even if you never open the skill:
 
 ### Activity flow
 
-Same overall shape as before: `ExperimentChooseActivity` → `ExperimentIntroActivity` →
-`ExperimentConfigActivity` → `ExperimentCreatedActivity` → daily `ExperimentCheckinActivity` /
-`ExperimentInstructionsActivity` → `ExperimentCompleteActivity`, plus `HistoryActivity` and
-`ExperimentProgressActivity` (opt-in mid-experiment visualization). All experiment activities are
-`singleTask`, portrait-locked, and `@AndroidEntryPoint`-injected with `ExperimentRepository` —
-none of them touch a backend or `SharedPreferences` for experiment state anymore.
+Same overall shape as before: `ExperimentChooseActivity` (optionally via `CreateExperimentActivity`
+to define a custom experiment first) → `ExperimentIntroActivity` → `ExperimentConfigActivity` →
+`ExperimentCreatedActivity` → daily `ExperimentCheckinActivity` / `ExperimentInstructionsActivity`
+→ `ExperimentCompleteActivity`, plus `HistoryActivity` and `ExperimentProgressActivity` (opt-in
+mid-experiment visualization). All experiment activities are `singleTask` and
+`@AndroidEntryPoint`-injected with `ExperimentRepository` — none of them touch a backend or
+`SharedPreferences` for experiment state anymore. **No portrait lock**: the `screenOrientation`/
+`configChanges` overrides that used to force portrait were removed in issue #25 once the
+ViewModel migration (§2.2) made screens survive rotation on their own; every screen now supports
+rotation and tablet layouts (not visually verified on-device/tablet — no emulator in CI, see
+below).
 `MainActivity.onCreate()` is the routing logic: no user data yet → `IntroActivity`; no/cancelled
 experiment → `ExperimentChooseActivity`; finished → `ExperimentCompleteActivity`; otherwise → daily
 check-in or instructions depending on whether today's check-in is done (`FORCE_CHECKIN = true` is a
@@ -150,19 +168,28 @@ clean run through it.
 Migration is **partial**; check `IMPROVEMENTS.md` §3 for current status before assuming a screen is
 Compose. As of the last update: `HistoryActivity`, `ExperimentChooseActivity`,
 `ExperimentInstructionsActivity`, `ExperimentProgressActivity`, the daily check-in
-(`ExperimentCheckinActivity`), and (since #22) the onboarding wizard (`IntroActivity`,
-`IntroThanksActivity`, `SettingsActivity`, `ExperimentConfigActivity`) are all Jetpack Compose
-(Material 3) with a `@HiltViewModel` + `StateFlow<UiState>` + one-shot `Channel` event pattern
-(`viewmodel/` package — copy this convention for new ViewModels). The legacy Java
-`QuestionActivity` + `ViewPager` + `ScrollPageIndicator` wizard framework, the whole
-`activities/questions/` fragment package, and all of the `view/` custom-widget zoo except
-`FontTextView` (`SelectableIcon*`, `ColoredRadioGroup`, `TimePickerView`, `ScrollPageIndicator`,
-etc.) are deleted. `FontTextView` survives because `ExperimentCompleteActivity`/
-`ExperimentCreatedActivity` still use it — those two are still legacy XML/View screens (#19's
-scope, not #22's). Shared wizard building blocks (dots indicator, colored radio scale,
-no-default-selection dropdown) live in `ui/wizard/WizardComponents.kt`, reusing the same
-visual/logic port `ExperimentCheckinActivity` established first; onboarding/settings
+(`ExperimentCheckinActivity`), `CreateExperimentActivity` (the custom-experiment wizard, #33), and
+(since #22) the onboarding wizard (`IntroActivity`, `IntroThanksActivity`, `SettingsActivity`,
+`ExperimentConfigActivity`) are all Jetpack Compose (Material 3) with a `@HiltViewModel` +
+`StateFlow<UiState>` + one-shot `Channel` event pattern (`viewmodel/` package — copy this
+convention for new ViewModels). The legacy Java `QuestionActivity` + `ViewPager` +
+`ScrollPageIndicator` wizard framework, the whole `activities/questions/` fragment package, and
+all of the `view/` custom-widget zoo except `FontTextView` (`SelectableIcon*`, `ColoredRadioGroup`,
+`TimePickerView`, `ScrollPageIndicator`, etc.) are deleted. `FontTextView` survives because
+`ExperimentCompleteActivity`/`ExperimentCreatedActivity` still use it — those two are still legacy
+XML/View screens (#19's scope, not #22's). Shared wizard building blocks (dots indicator, colored
+radio scale, no-default-selection dropdown) live in `ui/wizard/WizardComponents.kt`, reusing the
+same visual/logic port `ExperimentCheckinActivity` established first; onboarding/settings
 persistence (`UserData`, `NotificationData`) lives in `data/UserData.kt`.
+
+Onboarding's first screen (`terms_text`) no longer frames the app as an MIT Media Lab research
+study — issue #54 rewrote it (all three locales) to read as an ordinary self-tracking app and
+dropped the scroll-gated "I accept" consent checkbox in favor of a plain informational screen.
+This is scoped to the in-app experience only; `README.md`'s origin story/citations and the MIT
+License's `Copyright (c) 2018 MIT Media Lab` notice are untouched (legal/historical, not
+user-facing framing). `PermissionCheckingAppCompatActivity`, which caused an infinite
+permission-request loop on Intro/Complete screens, was deleted entirely in issue #57 rather than
+fixed in place.
 
 ### Notifications
 

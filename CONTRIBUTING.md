@@ -9,8 +9,9 @@ to build it today, plus notes on tooling decisions made during Phase 0/Phase 1 o
 - JDK 17
 - Android SDK platform 35, build-tools 34.0.0/35.0.0 (auto-installed by AGP if missing;
   license must be accepted once, e.g. via Android Studio's SDK Manager)
-- Gradle 8.9 (via `./gradlew` / `gradlew.bat` — do not use a different Gradle install)
-- Android Gradle Plugin (AGP) 8.6.1
+- Gradle 8.11.1 (via `./gradlew` / `gradlew.bat` — do not use a different Gradle install)
+- Android Gradle Plugin (AGP) 8.10.1
+- Kotlin 1.9.23
 
 Windows note: `./gradlew` under Git Bash may fail to resolve `JAVA_HOME` (a
 `cygpath`/MSYS quirk in the wrapper's shell script, not specific to this project). If that
