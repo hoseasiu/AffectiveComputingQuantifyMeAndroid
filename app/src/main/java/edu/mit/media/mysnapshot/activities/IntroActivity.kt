@@ -24,7 +24,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -78,7 +77,7 @@ private fun IntroScreen(onGetStarted: () -> Unit) {
                     .padding(top = 20.dp, bottom = 10.dp)
             )
             Text(
-                text = "Quantify Me",
+                text = "QuantifyMe",
                 fontSize = 24.sp,
                 textAlign = TextAlign.Center
             )
@@ -113,15 +112,6 @@ private fun IntroScreen(onGetStarted: () -> Unit) {
             Text(
                 text = "Before we can start, we will ask a few questions to get to know you better.",
                 fontSize = 18.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 20.dp)
-            )
-            Text(
-                text = "For science!",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()

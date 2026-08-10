@@ -316,7 +316,7 @@ private fun TermsStep(onContinue: () -> Unit) {
                 .padding(bottom = 16.dp)
         )
         Text(
-            text = "Welcome to Science!",
+            text = "Terms & Privacy",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
