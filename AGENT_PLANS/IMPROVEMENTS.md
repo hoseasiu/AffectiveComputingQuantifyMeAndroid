@@ -52,6 +52,7 @@ on what — it is derived live, never stored here.
 | — | Deleted `PermissionCheckingAppCompatActivity`, fixing an infinite permission-request loop on Intro/Complete screens | PR #60 (#57) |
 | 7.4 | Localized remaining hardcoded strings missed by #26: stage headers and "Today's Target" header on `ExperimentInstructionsActivity` | PR #61, #62 (#58) |
 | 4 | gson bumped to 2.14.0; `nineoldandroids`/Picasso/`roundedimageview`/`legacy-support-v4`/`legacy-support-v13` removed (all unreferenced once #22 retired their last consumers) | (#23) |
+| 6 | Daily check-in reminder notification (`CheckinReminderWorker`) had shown literal, never-filled-in placeholder text ("Notification"/"Notification") for title, body, and channel name since the app's first commit; replaced with real, localized copy | *(this change)* |
 
 ### Still open
 

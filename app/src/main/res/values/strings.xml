@@ -78,8 +78,9 @@ This app runs entirely on your device: your answers and the step/sleep data it r
         <item>300</item>
     </string-array>
 
-    <string name="notification_title">Notification</string>
-    <string name="notification_content">Notification</string>
+    <string name="checkin_reminder_channel_name">Check-in reminders</string>
+    <string name="checkin_reminder_title">Time to check in</string>
+    <string name="checkin_reminder_content">How did yesterday go? Log your check-in to keep your experiment on track.</string>
     <string name="alarm_title">Alarm</string>
     <string name="adherence_nudge_title">Keep it up!</string>
 

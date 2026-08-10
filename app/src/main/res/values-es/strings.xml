@@ -43,8 +43,9 @@ Esta aplicación funciona completamente en tu dispositivo: tus respuestas y los 
         <item>5 horas o más</item>
     </string-array>
 
-    <string name="notification_title">Notificación</string>
-    <string name="notification_content">Notificación</string>
+    <string name="checkin_reminder_channel_name">Recordatorios de registro</string>
+    <string name="checkin_reminder_title">Hora de registrarte</string>
+    <string name="checkin_reminder_content">¿Cómo te fue ayer? Registra tu check-in para mantener tu experimento en marcha.</string>
     <string name="alarm_title">Alarma</string>
     <string name="adherence_nudge_title">¡Sigue así!</string>
 

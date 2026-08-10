@@ -43,8 +43,9 @@ Cette application fonctionne entièrement sur votre appareil : vos réponses ain
         <item>5 heures ou plus</item>
     </string-array>
 
-    <string name="notification_title">Notification</string>
-    <string name="notification_content">Notification</string>
+    <string name="checkin_reminder_channel_name">Rappels de suivi</string>
+    <string name="checkin_reminder_title">C\'est l\'heure du suivi</string>
+    <string name="checkin_reminder_content">Comment s\'est passée la journée d\'hier ? Faites votre suivi pour garder votre expérience sur la bonne voie.</string>
     <string name="alarm_title">Alarme</string>
     <string name="adherence_nudge_title">Continuez ainsi !</string>
 

@@ -64,8 +64,8 @@ class CheckinReminderWorker @AssistedInject constructor(
         val notification = NotificationCompat.Builder(context, CHECKIN_REMINDER_CHANNEL_ID)
             .setSmallIcon(R.drawable.art_icon)
             .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setContentTitle(context.resources.getString(R.string.notification_title))
-            .setContentText(context.resources.getString(R.string.notification_content))
+            .setContentTitle(context.resources.getString(R.string.checkin_reminder_title))
+            .setContentText(context.resources.getString(R.string.checkin_reminder_content))
             .setContentIntent(resultPendingIntent)
             .setAutoCancel(true)
             .build()
@@ -78,7 +78,7 @@ class CheckinReminderWorker @AssistedInject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHECKIN_REMINDER_CHANNEL_ID,
-                context.resources.getString(R.string.notification_title),
+                context.resources.getString(R.string.checkin_reminder_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
             )
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
