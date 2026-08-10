@@ -54,6 +54,7 @@ on what — it is derived live, never stored here.
 | 4 | gson bumped to 2.14.0; `nineoldandroids`/Picasso/`roundedimageview`/`legacy-support-v4`/`legacy-support-v13` removed (all unreferenced once #22 retired their last consumers) | (#23) |
 | 6 | Daily check-in reminder notification (`CheckinReminderWorker`) had shown literal, never-filled-in placeholder text ("Notification"/"Notification") for title, body, and channel name since the app's first commit; replaced with real, localized copy | *(this change)* |
 | — | App launcher name ("SCIENCE!") and matching in-app gag copy ("For science!", "Welcome to Science!") replaced with the app's real name, `QuantifyMe`, in `app_label`/`app_name`/`title_activity_main` (all locales) and `IntroActivity`/`SettingsActivity`; consistent with #54's earlier removal of gimmicky research-study framing | *(this change)* |
+| — | Check-in wizard intro names the experiment (`ExperimentType.name`) instead of only the generic "Daily Check In" title; Settings + History header icons added to the check-in wizard so quitting/switching experiments is reachable without finishing that day's check-in first; the "Reason to Quit" field in the cancel-experiment dialog no longer demands input it silently discarded. Full workflow audit (not-in-an-experiment / pause / quit / change-experiments) in [`EXPERIMENT_LIFECYCLE_WORKFLOWS.md`](EXPERIMENT_LIFECYCLE_WORKFLOWS.md) | *(this change)* |
 
 ### Still open
 
@@ -64,6 +65,8 @@ on what — it is derived live, never stored here.
 | 7.3 | Support multiple concurrent experiments | #27 |
 | 10 | Emulator in CI so `androidTest` actually runs | *(no issue yet)* |
 | 10 | `connectedDebugAndroidTest` hangs indefinitely even on a real physical device — `ExperimentCheckinScreenTest` (#21/#36) has never actually executed anywhere, only compiled | #63 |
+| — | No "pause" concept anywhere (engine, Room schema, or UI) — only substitute today is turning off check-in reminder notifications, which doesn't stop missed-day penalties from accruing | *(no issue yet, see EXPERIMENT_LIFECYCLE_WORKFLOWS.md)* |
+| — | `MainActivity.FORCE_CHECKIN=true` means an already-completed-today check-in has no guard against being submitted a second time (`ExperimentRepository.submitCheckin` has no per-day uniqueness check) — dormant risk, not yet hit in practice | *(no issue yet, see EXPERIMENT_LIFECYCLE_WORKFLOWS.md)* |
 
 ---
 

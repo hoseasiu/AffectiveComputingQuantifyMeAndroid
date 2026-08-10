@@ -25,8 +25,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -267,44 +265,31 @@ private fun ExperimentCard(
     }
 }
 
+/**
+ * AGENT_PLANS/EXPERIMENT_LIFECYCLE_WORKFLOWS.md: this used to require typing a non-empty
+ * "Reason to Quit" before letting the cancel through, but the reason was never actually passed
+ * to [onConfirm] / [ExperimentRepository.cancelExperiment] -- there's no column on
+ * [edu.mit.media.mysnapshot.database.ExperimentEntity] to hold it and no backend to send it to
+ * anymore (leftover copy from when the old Django backend collected cancellation reasons as
+ * research data). Rather than keep making users type something into a void, this is now a plain
+ * confirmation.
+ */
 @Composable
 private fun CancelExperimentDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    var reason by rememberSaveable { mutableStateOf("") }
-    var showReasonError by rememberSaveable { mutableStateOf(false) }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Really Stop Experiment?") },
         text = {
-            Column {
-                Text("All your progress will be lost forever! If you want to quit, please let us know why.")
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = reason,
-                    onValueChange = { reason = it; showReasonError = false },
-                    label = { Text("Reason to Quit") },
-                    singleLine = true,
-                    isError = showReasonError
-                )
-                if (showReasonError) {
-                    Text(
-                        text = "Please enter a reason",
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp
-                    )
-                }
-            }
+            Text("This can't be undone -- all your check-in progress for this experiment will be deleted.")
         },
         confirmButton = {
-            Button(onClick = {
-                if (reason.isNotEmpty()) onConfirm() else showReasonError = true
-            }) {
-                Text("Continue")
+            Button(onClick = onConfirm) {
+                Text("Quit Experiment")
             }
         },
         dismissButton = {
             Button(onClick = onDismiss) {
-                Text("Cancel!")
+                Text("Keep Going")
             }
         }
     )

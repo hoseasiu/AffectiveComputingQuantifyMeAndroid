@@ -113,6 +113,8 @@ Cette application fonctionne entièrement sur votre appareil : vos réponses ain
     <string name="checkin_sleep_night_explanation">Nous avons compté votre sommeil de %1$s à %2$s comme la nuit du %3$s (une nuit appartient au jour où vous vous êtes réveillé, pas au jour où vous vous êtes endormi).</string>
     <string name="checkin_open_health_connect_button">Ouvrir Health Connect</string>
     <string name="checkin_open_health_connect_description">Ouvrir l\'application Health Connect</string>
+    <string name="checkin_header_settings_description">Paramètres</string>
+    <string name="checkin_header_history_description">Historique</string>
     <string name="checkin_continue">Continuer</string>
     <string name="checkin_generating_instructions">Génération des instructions du jour…</string>
     <string name="checkin_generating_instructions_description">Génération des instructions du jour</string>

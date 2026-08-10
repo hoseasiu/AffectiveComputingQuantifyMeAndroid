@@ -113,6 +113,8 @@ Esta aplicación funciona completamente en tu dispositivo: tus respuestas y los 
     <string name="checkin_sleep_night_explanation">Contamos tu sueño desde las %1$s hasta las %2$s como la noche del %3$s (una noche pertenece al día en que te despertaste, no al día en que te dormiste).</string>
     <string name="checkin_open_health_connect_button">Abrir Health Connect</string>
     <string name="checkin_open_health_connect_description">Abrir la aplicación Health Connect</string>
+    <string name="checkin_header_settings_description">Configuración</string>
+    <string name="checkin_header_history_description">Historial</string>
     <string name="checkin_continue">Continuar</string>
     <string name="checkin_generating_instructions">Generando instrucciones diarias…</string>
     <string name="checkin_generating_instructions_description">Generando instrucciones diarias</string>

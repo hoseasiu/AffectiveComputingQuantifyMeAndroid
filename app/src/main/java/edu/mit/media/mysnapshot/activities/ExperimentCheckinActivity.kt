@@ -135,7 +135,9 @@ class ExperimentCheckinActivity : ComponentActivity() {
                     onStressSelected = viewModel::onStressSelected,
                     onProductivitySelected = viewModel::onProductivitySelected,
                     onCustomAnswer = viewModel::onCustomAnswer,
-                    onDotClick = viewModel::goToStep
+                    onDotClick = viewModel::goToStep,
+                    onSettingsClick = { startActivity(Intent(this@ExperimentCheckinActivity, SettingsActivity::class.java)) },
+                    onHistoryClick = { startActivity(Intent(this@ExperimentCheckinActivity, HistoryActivity::class.java)) }
                 )
             }
         }
@@ -185,7 +187,9 @@ private fun CheckinScreen(
     onStressSelected: (Int) -> Unit,
     onProductivitySelected: (Int) -> Unit,
     onCustomAnswer: (String, Float) -> Unit,
-    onDotClick: (Int) -> Unit
+    onDotClick: (Int) -> Unit,
+    onSettingsClick: () -> Unit,
+    onHistoryClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -200,6 +204,21 @@ private fun CheckinScreen(
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
+            // AGENT_PLANS/EXPERIMENT_LIFECYCLE_WORKFLOWS.md: this screen is where most app
+            // opens land (MainActivity.FORCE_CHECKIN routes here unconditionally), but it used
+            // to have zero navigation off of it -- no way to reach Settings or History (where
+            // quitting/cancelling an experiment lives) without finishing the whole wizard first.
+            // Mirrors the header row FirstDayScreen already uses in ExperimentInstructionsActivity.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp, bottom = 10.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                CheckinHeaderIcon(R.drawable.button_profile, stringResource(R.string.checkin_header_settings_description), onSettingsClick)
+                CheckinHeaderIcon(R.drawable.button_home, stringResource(R.string.checkin_header_history_description), onHistoryClick)
+            }
+
             StepDotsIndicator(
                 currentStep = state.currentStep,
                 revealedSteps = state.revealedSteps,
@@ -213,6 +232,7 @@ private fun CheckinScreen(
                     when (CheckinStep.entries[state.currentStep]) {
                         CheckinStep.INTRO -> IntroStep(
                             icon = state.experimentType.iconId,
+                            experimentName = state.experimentType.name,
                             body = state.introText,
                             onOpenHealthConnect = onOpenHealthConnect,
                             onContinue = onIntroContinue
@@ -306,6 +326,22 @@ private fun SubmittingOverlay() {
     }
 }
 
+/** Untinted header nav icon, matching `FirstDayScreen`'s Settings/History pair in
+ * `ExperimentInstructionsActivity` -- kept as a local copy rather than a shared composable
+ * since that one is `private` there too and the two screens' header rows aren't otherwise
+ * coupled. */
+@Composable
+private fun CheckinHeaderIcon(icon: Int, contentDescription: String, onClick: () -> Unit) {
+    Image(
+        painter = painterResource(icon),
+        contentDescription = contentDescription,
+        modifier = Modifier
+            .size(50.dp)
+            .clickable(onClick = onClick)
+            .padding(10.dp)
+    )
+}
+
 @Composable
 private fun StepDotsIndicator(
     currentStep: Int,
@@ -364,6 +400,7 @@ private fun StepDotsIndicator(
 @Composable
 private fun IntroStep(
     icon: Int,
+    experimentName: String,
     body: String,
     onOpenHealthConnect: () -> Unit,
     onContinue: () -> Unit
@@ -381,6 +418,18 @@ private fun IntroStep(
             modifier = Modifier
                 .size(80.dp)
                 .padding(bottom = 16.dp)
+        )
+        // Surfaces which experiment this check-in belongs to (MainActivity routes straight
+        // here on open, skipping any other "here's your experiment" screen -- see FORCE_CHECKIN
+        // in MainActivity.kt -- so without this, the generic title below is the user's only cue
+        // and it says nothing about what they're actually checking in for).
+        Text(
+            text = experimentName,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 4.dp)
         )
         Text(
             text = stringResource(R.string.checkin_title),

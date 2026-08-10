@@ -156,6 +156,8 @@ This app runs entirely on your device: your answers and the step/sleep data it r
     <string name="checkin_sleep_night_explanation">We counted your sleep from %1$s to %2$s as the night of %3$s (a night belongs to the day you woke up, not the day you fell asleep).</string>
     <string name="checkin_open_health_connect_button">Open Health Connect</string>
     <string name="checkin_open_health_connect_description">Open the Health Connect app</string>
+    <string name="checkin_header_settings_description">Settings</string>
+    <string name="checkin_header_history_description">History</string>
     <string name="checkin_continue">Continue</string>
     <string name="checkin_generating_instructions">Generating daily instructions…</string>
     <string name="checkin_generating_instructions_description">Generating daily instructions</string>
