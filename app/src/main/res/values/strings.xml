@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_label">SCIENCE</string>
-    <string name="app_name">SCIENCE!</string>
-    <string name="title_activity_main">SCIENCE!</string>
+    <string name="app_label">QuantifyMe</string>
+    <string name="app_name">QuantifyMe</string>
+    <string name="title_activity_main">QuantifyMe</string>
 
     <string name="terms_text">
-<![CDATA[SCIENCE! helps you run self-experiments to find out how your behaviors affect you.
+<![CDATA[QuantifyMe helps you run self-experiments to find out how your behaviors affect you.
 \n\n
 Along the way, you\'ll be asked to change a behavior for a while. This can feel uncomfortable at times -- the change you\'re testing may temporarily lead to worse outcomes before things improve.
 \n\n
