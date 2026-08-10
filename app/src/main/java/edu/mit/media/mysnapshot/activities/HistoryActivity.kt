@@ -82,10 +82,29 @@ class HistoryActivity : ComponentActivity() {
                     experiments = state.experiments,
                     isBusy = state.isCancelling,
                     onCancelConfirmed = viewModel::cancelExperiment,
-                    onExport = viewModel::exportExperiment
+                    onExport = viewModel::exportExperiment,
+                    onStartNewExperiment = ::startNewExperiment
                 )
             }
         }
+    }
+
+    /**
+     * This screen used to be a dead end once every experiment on it was cancelled or
+     * completed: no button, no back affordance beyond the system back gesture, which lands
+     * back on whatever check-in/instructions screen launched History -- now stale, since the
+     * experiment it was tracking may have just been cancelled from here. `CLEAR_TASK` drops
+     * that stale screen along with the rest of the back stack and restarts clean at
+     * [ExperimentChooseActivity], whose own `onResume` guard (`checkForExistingExperiment`)
+     * still redirects to [MainActivity] if an experiment is somehow still active -- so this is
+     * safe to call unconditionally.
+     */
+    private fun startNewExperiment() {
+        val intent = Intent(this, ExperimentChooseActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        startActivity(intent)
+        finish()
     }
 
     /**
@@ -118,7 +137,8 @@ private fun HistoryScreen(
     experiments: List<ExperimentEntity>?,
     isBusy: Boolean,
     onCancelConfirmed: (ExperimentEntity) -> Unit,
-    onExport: (ExperimentEntity) -> Unit
+    onExport: (ExperimentEntity) -> Unit,
+    onStartNewExperiment: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -138,21 +158,38 @@ private fun HistoryScreen(
             )
         }
 
-        when {
-            experiments == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            experiments.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "No Experiments Found!",
-                    modifier = Modifier.padding(30.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            }
-            else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(experiments, key = { it.id }) { experiment ->
-                    ExperimentCard(experiment, isBusy, onCancelConfirmed, onExport)
+        Box(modifier = Modifier.weight(1f)) {
+            when {
+                experiments == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
+                experiments.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "No Experiments Found!",
+                        modifier = Modifier.padding(30.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+                else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(experiments, key = { it.id }) { experiment ->
+                        ExperimentCard(experiment, isBusy, onCancelConfirmed, onExport)
+                    }
+                }
+            }
+        }
+
+        // Nothing here is ever a dead end: once nothing in the list is still running (every
+        // experiment is cancelled or finished, or there's no history at all), surface a way
+        // back to the picker instead of leaving the user stuck on a read-only list.
+        val hasActiveExperiment = experiments?.any { it.isActive } ?: true
+        if (!hasActiveExperiment) {
+            Button(
+                onClick = onStartNewExperiment,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Text("Start New Experiment")
             }
         }
     }
